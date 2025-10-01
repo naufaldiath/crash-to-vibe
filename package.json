@@ -1,0 +1,42 @@
+{
+  "name": "crash-to-vibe",
+  "version": "1.0.0",
+  "description": "Firebase Crashlytics to Vibe Kanban workflow generator with AI automation",
+  "main": "generate-crash-analyzer.js",
+  "bin": {
+    "crash-to-vibe": "./generate-crash-analyzer.js",
+    "generate-crash-analyzer": "./generate-crash-analyzer.js",
+    "crash-analyzer": "./generate-crash-analyzer.js"
+  },
+  "scripts": {
+    "start": "node generate-crash-analyzer.js",
+    "generate": "node generate-crash-analyzer.js"
+  },
+  "keywords": [
+    "firebase",
+    "crashlytics",
+    "vibe",
+    "kanban",
+    "automation",
+    "ai",
+    "mobile",
+    "android",
+    "ios",
+    "flutter",
+    "crash-analysis",
+    "task-automation"
+  ],
+  "author": "Naufaldi Athallah Rifqi <naufaldi.rifqi@mekari.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/naufaldiath/crash-to-vibe.git"
+  },
+  "bugs": {
+    "url": "https://github.com/naufaldiath/crash-to-vibe/issues"
+  },
+  "homepage": "https://github.com/naufaldiath/crash-to-vibe#readme"
+}

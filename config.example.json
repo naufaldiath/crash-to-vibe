@@ -1,0 +1,35 @@
+{
+  "project": {
+    "directory": "/path/to/your/mobile/project",
+    "name": "Your App Name",
+    "platform": "android"
+  },
+  "firebase": {
+    "projectId": "your-firebase-project-id",
+    "appId": "1:123456789:android:abcdef123456789"
+  },
+  "kanban": {
+    "system": "vibe",
+    "projectName": "Your App Name - Mobile"
+  },
+  "thresholds": {
+    "critical": {
+      "crashes": 800,
+      "users": 600
+    },
+    "high": {
+      "crashes": 400,
+      "users": 300
+    },
+    "medium": {
+      "crashes": 100,
+      "users": 50
+    }
+  },
+  "aiAgents": [
+    "claude",
+    "aider", 
+    "gemini",
+    "amp"
+  ]
+}

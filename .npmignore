@@ -1,0 +1,19 @@
+# Development files
+.vscode/
+.claude/
+last-config.json
+
+# Documentation (keep essential ones)
+VIBE-ONLY-COMPLETE.md
+VSCodeExtension.md
+EXAMPLE.md
+SOLUTION_SUMMARY.md
+
+# Git
+.git/
+.gitignore
+
+# System files
+.DS_Store
+Thumbs.db
+*.log
