@@ -1,6 +1,6 @@
-# CLAUDE.md
+# GitHub Copilot Instructions
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to GitHub Copilot when working with code in this repository.
 
 ## Project Overview
 
@@ -70,7 +70,7 @@ firebase apps:list --project <project-id>
 
 ### Core Component: CrashAnalyzerGenerator Class
 
-The tool is a single-file Node.js application ([generate-crash-analyzer.js](generate-crash-analyzer.js)) built around the `CrashAnalyzerGenerator` class with these key responsibilities:
+The tool is a single-file Node.js application (`generate-crash-analyzer.js`) built around the `CrashAnalyzerGenerator` class with these key responsibilities:
 
 1. **Project Detection** (`detectProjectInfo`, `findFirebaseConfigFiles`)
    - Recursively searches for Firebase config files up to 10 levels deep
@@ -84,32 +84,23 @@ The tool is a single-file Node.js application ([generate-crash-analyzer.js](gene
    - Falls back to manual entry if Firebase CLI unavailable
    - Parses Firebase CLI table output to extract project/app information
 
-3. **User Interaction** (`collectConfiguration`, `promptUser`, `selectExecutionMode`)
+3. **User Interaction** (`collectConfiguration`, `promptUser`)
    - Interactive CLI prompts with intelligent defaults from auto-detection
    - Multi-environment selection when multiple configs found
    - App selection when multiple apps exist in Firebase project
-   - AI CLI detection and execution mode selection
 
-4. **AI CLI Integration** (`AIExecutorFactory`, AI executor classes in [ai-executors.js](ai-executors.js))
-   - Auto-detects installed AI CLIs (Claude, Copilot, Gemini, Aider)
-   - Validates authentication status for each CLI
-   - Executes workflows with selected AI CLI
-   - Logs execution output to crashAnalyzer.execution.log
-
-5. **Workflow Generation** (`generateWorkflow`, `loadTemplate`)
-   - Uses [crashAnalyzer.template.md](crashAnalyzer.template.md) as base template
+4. **Workflow Generation** (`generateWorkflow`, `loadTemplate`)
+   - Uses `crashAnalyzer.template.md` as base template
    - Replaces placeholders like {{PROJECT_NAME}}, {{FIREBASE_PROJECT_ID}}, etc.
    - Generates AI-optimized task templates with acceptance criteria
 
-6. **Output Management** (`saveWorkflow`, `saveConfig`, `executeWorkflow`)
+5. **Output Management** (`saveWorkflow`, `saveConfig`)
    - Saves generated workflow to current directory as crashAnalyzer.md
    - Saves configuration to ~/.crash-analyzer-config.json (global) or ./last-config.json (local)
-   - Executes workflow with AI CLI if requested
-   - Creates execution logs for debugging
 
 ### Template System
 
-The [crashAnalyzer.template.md](crashAnalyzer.template.md) contains:
+The `crashAnalyzer.template.md` contains:
 - Step-by-step Firebase MCP integration instructions
 - Crashlytics data fetching procedures (FATAL and NON-FATAL issues)
 - Vibe Kanban task creation templates optimized for AI agents
@@ -119,7 +110,7 @@ The [crashAnalyzer.template.md](crashAnalyzer.template.md) contains:
 
 ### Configuration Schema
 
-Configuration follows this structure (see [config.example.json](config.example.json)):
+Configuration follows this structure (see `config.example.json`):
 ```javascript
 {
   project: {
@@ -137,10 +128,6 @@ Configuration follows this structure (see [config.example.json](config.example.j
     system: 'vibe',       // Currently only Vibe Kanban supported
     projectName: string   // Kanban project name
   },
-  execution: {
-    mode: string,         // 'generate-only' or 'cli'
-    cli: string          // 'claude', 'copilot', 'gemini', 'aider', or null
-  },
   thresholds: {
     critical: { crashes: number, users: number },
     high: { crashes: number, users: number },
@@ -150,7 +137,7 @@ Configuration follows this structure (see [config.example.json](config.example.j
 }
 ```
 
-## Key Patterns
+## Code Patterns & Best Practices
 
 ### Multi-Environment Support
 When multiple Firebase configs are found:
@@ -177,7 +164,7 @@ The `extractEnvironmentName` method uses pattern matching:
 - Normalizes names to proper case (Production, Development, Staging, etc.)
 - Returns null if no environment detected (uses 'default')
 
-## Testing the Tool
+## Testing Guidelines
 
 ### Local Project Testing
 ```bash
@@ -210,7 +197,7 @@ npm unlink -g crash-to-vibe # Clean up
 4. Add platform to keyword list ('android', 'ios', 'flutter')
 
 ### Customizing Task Templates
-Edit [crashAnalyzer.template.md](crashAnalyzer.template.md):
+Edit `crashAnalyzer.template.md`:
 - Modify STEP 5 for task template structure
 - Update STEP 6 for platform-specific issue templates
 - Adjust priority thresholds in STEP 4
@@ -265,3 +252,44 @@ Each task template includes:
 - AI-executable action items with measurable criteria
 - File paths and investigation targets for AI context
 - Acceptance criteria verifiable by automated tools
+
+## Coding Conventions
+
+When suggesting code for this project:
+
+### File Structure
+- Single-file architecture: Keep all logic in `generate-crash-analyzer.js`
+- Separate template file: `crashAnalyzer.template.md` for workflow templates
+- Configuration examples: Use `config.example.json` as reference
+
+### Code Style
+- Use ES6+ features (const/let, arrow functions, template literals)
+- Prefer synchronous operations for CLI tool simplicity
+- Use descriptive method names following camelCase convention
+- Keep methods focused on single responsibilities
+
+### Error Handling
+- Use try-catch blocks for file operations and external commands
+- Provide user-friendly error messages with actionable guidance
+- Gracefully degrade when Firebase CLI is unavailable
+- Log warnings for skipped directories during traversal
+
+### User Interaction
+- Use readline for interactive prompts
+- Provide intelligent defaults from auto-detection
+- Show clear progress indicators and success messages
+- Validate user input before proceeding
+
+### Comments
+- Add JSDoc comments for class methods
+- Include inline comments for complex regex or parsing logic
+- Document placeholder patterns in template
+- Explain threshold values and their impact
+
+## Git Workflow
+
+- Main branch: `main`
+- Keep commits atomic and descriptive
+- Update CLAUDE.md and this file when adding features
+- Test globally (`npm link`) before publishing
+- Update package.json version following semver

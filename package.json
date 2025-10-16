@@ -4,9 +4,7 @@
   "description": "Firebase Crashlytics to Vibe Kanban workflow generator with AI automation",
   "main": "generate-crash-analyzer.js",
   "bin": {
-    "crash-to-vibe": "./generate-crash-analyzer.js",
-    "generate-crash-analyzer": "./generate-crash-analyzer.js",
-    "crash-analyzer": "./generate-crash-analyzer.js"
+    "crash-to-vibe": "./generate-crash-analyzer.js"
   },
   "scripts": {
     "start": "node generate-crash-analyzer.js",

@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const { execSync } = require('child_process');
+const { AIExecutorFactory } = require('./ai-executors');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -16,6 +17,10 @@ class CrashAnalyzerGenerator {
       project: {},
       firebase: {},
       kanban: {},
+      execution: {
+        mode: 'generate-only', // 'generate-only' or 'cli'
+        cli: null // 'claude', 'copilot', 'gemini', 'aider'
+      },
       thresholds: {
         critical: { crashes: 800, users: 600 },
         high: { crashes: 400, users: 300 },
@@ -23,6 +28,62 @@ class CrashAnalyzerGenerator {
       },
       aiAgents: ['claude', 'aider', 'gemini', 'amp']
     };
+    this.aiExecutorFactory = new AIExecutorFactory();
+    this.cliArgs = this.parseCliArgs();
+  }
+
+  /**
+   * Parse command line arguments
+   * @returns {object}
+   */
+  parseCliArgs() {
+    const args = process.argv.slice(2);
+    const parsed = {
+      generateOnly: false,
+      forceCli: null,
+      help: false
+    };
+
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === '--generate-only') {
+        parsed.generateOnly = true;
+      } else if (args[i] === '--cli' && args[i + 1]) {
+        parsed.forceCli = args[i + 1];
+        i++; // Skip next arg
+      } else if (args[i] === '--help' || args[i] === '-h') {
+        parsed.help = true;
+      }
+    }
+
+    return parsed;
+  }
+
+  /**
+   * Show help message
+   */
+  showHelp() {
+    console.log(`
+🔥 Firebase Crashlytics to Vibe Kanban Workflow Generator
+
+Usage: crash-to-vibe [options]
+
+Options:
+  --generate-only     Only generate the workflow file without executing
+  --cli <name>        Execute with specific AI CLI (claude, copilot, gemini, codex)
+  --help, -h          Show this help message
+
+Examples:
+  crash-to-vibe                      # Interactive mode with AI CLI detection
+  crash-to-vibe --generate-only      # Only generate workflow file
+  crash-to-vibe --cli claude         # Generate and execute with Claude Code
+  crash-to-vibe --cli codex          # Generate and execute with Codex CLI
+
+Supported AI CLIs:
+  - Claude Code (claude)
+  - GitHub Copilot CLI (copilot)
+  - Gemini CLI (gemini)
+  - Codex CLI (codex)
+`);
   }
 
   async detectProjectInfo(projectDir = process.cwd()) {
@@ -528,6 +589,117 @@ class CrashAnalyzerGenerator {
     console.log('\n✅ Configuration collected successfully!\n');
   }
 
+  /**
+   * Detect available AI CLIs and prompt user for execution mode
+   */
+  async selectExecutionMode() {
+    // Skip if --generate-only flag is provided
+    if (this.cliArgs.generateOnly) {
+      console.log('📝 Generate-only mode (from --generate-only flag)');
+      this.config.execution.mode = 'generate-only';
+      return;
+    }
+
+    // Skip if --cli flag is provided
+    if (this.cliArgs.forceCli) {
+      const executor = this.aiExecutorFactory.getExecutor(this.cliArgs.forceCli);
+      if (!executor) {
+        console.log(`❌ Unknown CLI: ${this.cliArgs.forceCli}`);
+        console.log('   Supported CLIs: claude, copilot, gemini, aider');
+        process.exit(1);
+      }
+      
+      if (!executor.isInstalled()) {
+        console.log(`❌ ${executor.displayName} is not installed`);
+        console.log(executor.getInstallInstructions());
+        process.exit(1);
+      }
+
+      const authStatus = executor.checkAuth();
+      if (!authStatus.authenticated) {
+        console.log(`❌ ${executor.displayName} authentication failed: ${authStatus.message}`);
+        console.log(executor.getAuthInstructions());
+        process.exit(1);
+      }
+
+      this.config.execution.mode = 'cli';
+      this.config.execution.cli = this.cliArgs.forceCli;
+      console.log(`🤖 Using ${executor.displayName} (from --cli flag)`);
+      return;
+    }
+
+    // Interactive mode: detect and prompt
+    console.log('\n🔍 Detecting available AI CLIs...');
+    const availableExecutors = this.aiExecutorFactory.detectAvailableExecutors();
+    
+    if (availableExecutors.length === 0) {
+      console.log('⚠️  No AI CLIs detected');
+      console.log('💡 Workflow will be generated for manual execution');
+      this.config.execution.mode = 'generate-only';
+      return;
+    }
+
+    // Check authentication for available executors
+    const readyExecutors = availableExecutors.filter(executor => {
+      const authStatus = executor.checkAuth();
+      return authStatus.authenticated;
+    });
+
+    console.log(`\n✅ Found ${availableExecutors.length} installed AI CLI(s):`);
+    availableExecutors.forEach(executor => {
+      const authStatus = executor.checkAuth();
+      const status = authStatus.authenticated ? '✓ Ready' : '⚠ Not authenticated';
+      console.log(`   - ${executor.displayName}: ${status}`);
+    });
+
+    // Build options
+    const options = ['Generate workflow file only'];
+    const executorMap = {};
+    let optionIndex = 2;
+
+    readyExecutors.forEach(executor => {
+      options.push(`Generate and execute with ${executor.displayName}`);
+      executorMap[optionIndex] = executor.name;
+      optionIndex++;
+    });
+
+    // Show not authenticated executors
+    const notAuthExecutors = availableExecutors.filter(e => !readyExecutors.includes(e));
+    if (notAuthExecutors.length > 0) {
+      console.log('\n⚠️  Not authenticated:');
+      notAuthExecutors.forEach(executor => {
+        console.log(`   - ${executor.displayName}`);
+        console.log(`     ${executor.getAuthInstructions()}`);
+      });
+    }
+
+    // Prompt user
+    console.log('\n📋 How would you like to proceed?');
+    options.forEach((option, index) => {
+      console.log(`   ${index + 1}. ${option}`);
+    });
+
+    const defaultChoice = readyExecutors.length > 0 ? '2' : '1';
+    const choice = await this.promptUser(
+      `Select option (1-${options.length})`,
+      defaultChoice
+    );
+
+    const choiceNum = parseInt(choice);
+    if (choiceNum === 1) {
+      this.config.execution.mode = 'generate-only';
+      console.log('📝 Generating workflow file only');
+    } else if (choiceNum >= 2 && choiceNum <= options.length) {
+      this.config.execution.mode = 'cli';
+      this.config.execution.cli = executorMap[choiceNum];
+      const executor = this.aiExecutorFactory.getExecutor(this.config.execution.cli);
+      console.log(`🤖 Will execute with ${executor.displayName}`);
+    } else {
+      console.log('⚠️  Invalid choice, defaulting to generate-only mode');
+      this.config.execution.mode = 'generate-only';
+    }
+  }
+
   parseFirebaseApps(appsOutput, targetPlatform) {
     const apps = [];
     const lines = appsOutput.split('\n');
@@ -605,22 +777,117 @@ class CrashAnalyzerGenerator {
     console.log(`💾 Configuration saved to: ${configPath}`);
   }
 
+  /**
+   * Execute the workflow with selected AI CLI
+   * @param {string} workflowPath - Path to the generated workflow file
+   * @returns {Promise<void>}
+   */
+  async executeWorkflow(workflowPath) {
+    if (this.config.execution.mode !== 'cli' || !this.config.execution.cli) {
+      return;
+    }
+
+    const executor = this.aiExecutorFactory.getExecutor(this.config.execution.cli);
+    if (!executor) {
+      console.error(`❌ Executor not found: ${this.config.execution.cli}`);
+      process.exit(2);
+    }
+
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`🚀 Starting AI CLI Execution`);
+    console.log(`${'='.repeat(60)}\n`);
+
+    // Create log file
+    const logPath = path.join(process.cwd(), 'crashAnalyzer.execution.log');
+    const logStream = fs.createWriteStream(logPath, { flags: 'w' });
+    
+    logStream.write(`Crash Analyzer Execution Log\n`);
+    logStream.write(`Generated: ${new Date().toISOString()}\n`);
+    logStream.write(`AI CLI: ${executor.displayName}\n`);
+    logStream.write(`Workflow: ${workflowPath}\n`);
+    logStream.write(`${'='.repeat(60)}\n\n`);
+
+    try {
+      const result = executor.execute(workflowPath);
+      
+      if (result.success) {
+        logStream.write('Status: SUCCESS\n');
+        if (result.output) {
+          logStream.write(`\nOutput:\n${result.output}\n`);
+        }
+        logStream.end();
+        
+        console.log(`\n${'='.repeat(60)}`);
+        console.log('✅ Workflow executed successfully!');
+        console.log(`${'='.repeat(60)}\n`);
+        console.log(`📝 Execution log saved to: ${logPath}`);
+      } else {
+        logStream.write('Status: FAILED\n');
+        if (result.error) {
+          logStream.write(`\nError:\n${result.error}\n`);
+        }
+        logStream.end();
+        
+        console.log(`\n${'='.repeat(60)}`);
+        console.error('❌ Workflow execution failed');
+        console.log(`${'='.repeat(60)}\n`);
+        console.error('Error:', result.error);
+        console.log(`\n📝 Execution log saved to: ${logPath}`);
+        process.exit(2);
+      }
+    } catch (error) {
+      logStream.write(`Status: ERROR\n`);
+      logStream.write(`\nException:\n${error.message}\n${error.stack}\n`);
+      logStream.end();
+      
+      console.error('\n❌ Unexpected error during execution:', error.message);
+      console.log(`📝 Execution log saved to: ${logPath}`);
+      process.exit(2);
+    }
+  }
+
   async run() {
     try {
+      // Show help if requested
+      if (this.cliArgs.help) {
+        this.showHelp();
+        process.exit(0);
+      }
+
+      // Collect configuration
       await this.collectConfiguration();
+      
+      // Select execution mode
+      await this.selectExecutionMode();
+      
+      // Generate workflow
       const workflow = this.generateWorkflow();
       this.saveWorkflow(workflow);
       this.saveConfig();
       
-      console.log('\n🎉 Success! Your generic crash analyzer workflow has been generated.');
-      console.log('\nNext steps:');
-      console.log('1. Review the generated crashAnalyzer.md file');
-      console.log('2. Update any project-specific details as needed');
-      console.log('3. Run the workflow with your AI assistant');
-      console.log('\n🤖 The workflow is now ready for AI agent execution!');
+      const workflowPath = path.join(process.cwd(), 'crashAnalyzer.md');
+      
+      console.log('\n🎉 Success! Your crash analyzer workflow has been generated.');
+      console.log(`📄 Workflow file: ${workflowPath}`);
+      
+      // Execute if requested
+      if (this.config.execution.mode === 'cli') {
+        await this.executeWorkflow(workflowPath);
+      } else {
+        console.log('\n📋 Next steps:');
+        console.log('1. Review the generated crashAnalyzer.md file');
+        console.log('2. Update any project-specific details as needed');
+        console.log('3. Run the workflow with your AI assistant manually');
+        console.log('\n💡 Tip: Use --cli <name> to execute automatically next time');
+      }
+      
+      process.exit(0);
       
     } catch (error) {
       console.error('❌ Error:', error.message);
+      if (error.stack) {
+        console.error('Stack trace:', error.stack);
+      }
       process.exit(1);
     } finally {
       rl.close();

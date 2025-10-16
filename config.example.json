@@ -12,6 +12,10 @@
     "system": "vibe",
     "projectName": "Your App Name - Mobile"
   },
+  "execution": {
+    "mode": "generate-only",
+    "cli": null
+  },
   "thresholds": {
     "critical": {
       "crashes": 800,
@@ -28,8 +32,8 @@
   },
   "aiAgents": [
     "claude",
-    "aider", 
+    "codex", 
     "gemini",
-    "amp"
+    "copilot"
   ]
 }
