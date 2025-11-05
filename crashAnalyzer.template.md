@@ -309,13 +309,13 @@ The stacktrace should show:
    - Document fix rationale and testing approach
    - **Create Pull Request** (if Bitbucket enabled):
      ```
-     Use mcp_bitbucket_createDraftPullRequest:
+     Use create_pull_request (Bitbucket MCP):
      - workspace: "{{BITBUCKET_WORKSPACE}}"
-     - repo_slug: "{{BITBUCKET_REPO_SLUG}}"
-     - title: "Fix: [Issue Title] - #[Firebase Issue ID]"
-     - description: Include Firebase link, Vibe task link, stacktrace, root cause, solution, and testing checklist
-     - sourceBranch: "[AI-created branch name]"
-     - targetBranch: "{{BITBUCKET_TARGET_BRANCH}}"
+     - repository: "{{BITBUCKET_REPO_SLUG}}"
+     - title: "{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] Fix: [Issue Title]"
+     - description: Include Firebase link, Jira task link, stacktrace, root cause, solution, and testing checklist
+     - source_branch: "[AI-created branch name]"
+     - destination_branch: "{{BITBUCKET_TARGET_BRANCH}}"
      - reviewers: [{{BITBUCKET_REVIEWERS}}]
      
      Create PR in repository: {{BITBUCKET_WORKSPACE}}/{{BITBUCKET_REPO_SLUG}}
@@ -499,13 +499,17 @@ The stacktrace should show:
    - Set up alerts for regression
    - **Create Pull Request** (if Bitbucket enabled):
      ```
-     Use mcp_bitbucket_createDraftPullRequest:
+     Use create_pull_request (Bitbucket MCP):
      - workspace: "{{BITBUCKET_WORKSPACE}}"
-     - repo_slug: "{{BITBUCKET_REPO_SLUG}}"
+     - repository: "{{BITBUCKET_REPO_SLUG}}"
+{{#if (eq KANBAN_SYSTEM "jira")}}
+     - title: "{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] Fix: [Issue Title]"
+{{else}}
      - title: "Fix: [Issue Title] - #[Firebase Issue ID]"
-     - description: Include Firebase link, Vibe task link, stacktrace, root cause, solution, and testing checklist
-     - sourceBranch: "[AI-created branch name]"
-     - targetBranch: "{{BITBUCKET_TARGET_BRANCH}}"
+{{/if}}
+     - description: Include Firebase link, task link, stacktrace, root cause, solution, and testing checklist
+     - source_branch: "[AI-created branch name]"
+     - destination_branch: "{{BITBUCKET_TARGET_BRANCH}}"
      - reviewers: [{{BITBUCKET_REVIEWERS}}]
      
      Create PR in repository: {{BITBUCKET_WORKSPACE}}/{{BITBUCKET_REPO_SLUG}}
@@ -686,13 +690,17 @@ The trace should show:
    - Set up ANR/slow frame monitoring
    - **Create Pull Request** (if Bitbucket enabled):
      ```
-     Use mcp_bitbucket_createDraftPullRequest:
+     Use create_pull_request (Bitbucket MCP):
      - workspace: "{{BITBUCKET_WORKSPACE}}"
-     - repo_slug: "{{BITBUCKET_REPO_SLUG}}"
+     - repository: "{{BITBUCKET_REPO_SLUG}}"
+{{#if (eq KANBAN_SYSTEM "jira")}}
+     - title: "{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] Perf: [Issue Title]"
+{{else}}
      - title: "Perf: [Issue Title] - #[Firebase Issue ID]"
-     - description: Include Firebase link, Vibe task link, performance analysis, optimization approach, and benchmarks
-     - sourceBranch: "[AI-created branch name]"
-     - targetBranch: "{{BITBUCKET_TARGET_BRANCH}}"
+{{/if}}
+     - description: Include Firebase link, task link, performance analysis, optimization approach, and benchmarks
+     - source_branch: "[AI-created branch name]"
+     - destination_branch: "{{BITBUCKET_TARGET_BRANCH}}"
      - reviewers: [{{BITBUCKET_REVIEWERS}}]
      
      Create PR in repository: {{BITBUCKET_WORKSPACE}}/{{BITBUCKET_REPO_SLUG}}
@@ -1067,7 +1075,7 @@ After creating all tasks, provide:
 {{#if (eq KANBAN_SYSTEM "jira")}}
    - Use `mcp_atlassian_createJiraIssue` for each issue
 {{/if}}
-5. **Create pull requests** (if Bitbucket enabled) using `mcp_bitbucket_createDraftPullRequest` after AI fixes
+5. **Create pull requests** (if Bitbucket enabled) using `mcp_bitbucket_create_pull_request` after AI fixes
 
 Handle any authentication or configuration issues, and create comprehensive, AI-executable tasks for the {{PROJECT_NAME}} {{PLATFORM}} development team. Focus on overall app stability and user experience improvements through intelligent automation with detailed crash insights.
 
@@ -1100,11 +1108,11 @@ Handle any authentication or configuration issues, and create comprehensive, AI-
 After AI agent completes the crash fix, create a pull request for team review:
 
 ```
-Use mcp_bitbucket_createDraftPullRequest:
+Use create_pull_request (Bitbucket MCP):
 
 Parameters:
 - workspace: "{{BITBUCKET_WORKSPACE}}"
-- repo_slug: "{{BITBUCKET_REPO_SLUG}}"
+- repository: "{{BITBUCKET_REPO_SLUG}}"
 {{#if (eq KANBAN_SYSTEM "jira")}}
 - title: "{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] Fix: [Crash Title]"
 {{else}}
@@ -1181,15 +1189,15 @@ Example commits in this PR:
 **⚠️ AI-Generated Fix**: Please review thoroughly before merging.
 """
 {{#if (eq KANBAN_SYSTEM "jira")}}
-- sourceBranch: "bugfix/{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER]_[brief-description]"
+- source_branch: "bugfix/{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER]_[brief-description]"
 {{else}}
-- sourceBranch: "[AI-created branch name, e.g., fix/crash-issue-123]"
+- source_branch: "[AI-created branch name, e.g., fix/crash-issue-123]"
 {{/if}}
-- targetBranch: "{{BITBUCKET_TARGET_BRANCH}}"
+- destination_branch: "{{BITBUCKET_TARGET_BRANCH}}"
 - reviewers: [{{BITBUCKET_REVIEWERS}}]
 
 Expected Result:
-- Draft PR created in Bitbucket
+- PR created in Bitbucket
 - Team notified for review
 {{#if (eq KANBAN_SYSTEM "jira")}}
 - PR title includes Jira ticket number
@@ -1199,14 +1207,16 @@ Expected Result:
 - Testing checklist ready for verification
 ```
 
-**Note**: Creating as draft PR allows team to review AI-generated fixes before merging to {{BITBUCKET_TARGET_BRANCH}}.
+**Note**: Review the created PR before merging to {{BITBUCKET_TARGET_BRANCH}}.
 
-**To publish draft PR after review**:
+**To merge PR after review**:
 ```
-Use mcp_bitbucket_publishDraftPullRequest:
+Use merge_pull_request (Bitbucket MCP):
 - workspace: "{{BITBUCKET_WORKSPACE}}"
-- repo_slug: "{{BITBUCKET_REPO_SLUG}}"
+- repository: "{{BITBUCKET_REPO_SLUG}}"
 - pull_request_id: [PR ID from creation response]
+- merge_strategy: "merge_commit" or "squash" or "fast_forward"
+- close_source_branch: true
 ```
 
 ---

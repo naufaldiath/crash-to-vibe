@@ -84,11 +84,153 @@ crash-to-vibe --help
 
 ## 📋 Prerequisites
 
+### System Requirements
 - **Node.js**: v14.0.0 or higher
 - **Firebase Project**: An active Firebase project with Crashlytics enabled
 - **Firebase CLI** (recommended): For enhanced auto-detection
-- **Vibe Kanban**: Access to Vibe Kanban for task creation
+- **Task Management System**: Vibe Kanban or Jira (Atlassian) account
 - **AI CLI** (optional): One or more of the supported AI CLIs for auto-execution
+
+### Required MCP Servers
+
+Before using crash-to-vibe with AI execution, you need to install and configure the required MCP servers in your AI IDE's configuration file (e.g., `mcp.json` for Claude Desktop, Cline, or Windsurf).
+
+#### 1. Firebase MCP (Required)
+For fetching crash data from Firebase Crashlytics:
+
+```json
+{
+  "servers": {
+    "firebase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "firebase-tools@latest",
+        "experimental:mcp",
+        "--only",
+        "crashlytics,core"
+      ]
+    }
+  }
+}
+```
+
+**Setup**: 
+- Requires Firebase CLI authentication: `firebase login`
+- Set active project: `firebase use <project-id>`
+
+#### 2. Task Management MCP (Choose One)
+
+**Option A: Vibe Kanban MCP**
+```json
+{
+  "servers": {
+    "vibe_kanban": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "vibe-kanban",
+        "--mcp"
+      ]
+    }
+  }
+}
+```
+
+**Option B: Atlassian MCP (Jira)**
+```json
+{
+  "servers": {
+    "atlassian-mcp-server": {
+      "type": "http",
+      "url": "https://mcp.atlassian.com/v1/sse"
+    }
+  }
+}
+```
+
+**Setup**: Requires Atlassian account authentication via the MCP server UI.
+
+#### 3. Bitbucket MCP (Optional - for PR automation)
+For automated pull request creation after AI fixes:
+
+```json
+{
+  "servers": {
+    "bitbucket": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "bitbucket-mcp@latest"
+      ],
+      "env": {
+        "BITBUCKET_URL": "https://api.bitbucket.org/2.0",
+        "BITBUCKET_WORKSPACE": "your-workspace",
+        "BITBUCKET_USERNAME": "your-email@example.com",
+        "BITBUCKET_PASSWORD": "your-app-password"
+      }
+    }
+  }
+}
+```
+
+**Setup**: 
+- Create Bitbucket App Password: Settings → Personal Bitbucket settings → App passwords
+- Replace `your-workspace`, `your-email@example.com`, and `your-app-password`
+
+#### Complete MCP Configuration Example
+
+Here's a complete `mcp.json` with all required servers:
+
+```json
+{
+  "servers": {
+    "firebase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "firebase-tools@latest", "experimental:mcp", "--only", "crashlytics,core"]
+    },
+    "vibe_kanban": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "vibe-kanban", "--mcp"]
+    },
+    "bitbucket": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "bitbucket-mcp@latest"],
+      "env": {
+        "BITBUCKET_URL": "https://api.bitbucket.org/2.0",
+        "BITBUCKET_WORKSPACE": "your-workspace",
+        "BITBUCKET_USERNAME": "your-email@example.com",
+        "BITBUCKET_PASSWORD": "your-app-password"
+      }
+    }
+  }
+}
+```
+
+#### MCP Configuration Locations
+
+| AI IDE | Configuration File Location |
+|--------|----------------------------|
+| **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)<br>`%APPDATA%\Claude\claude_desktop_config.json` (Windows) |
+| **Cline** | `.vscode/mcp.json` or workspace settings |
+| **Windsurf** | `.windsurf/mcp.json` or IDE settings |
+| **Cursor** | `.cursor/mcp.json` or IDE settings |
+
+#### Verification
+
+After configuring MCP servers:
+
+1. **Restart your AI IDE**
+2. **Check MCP status** in the IDE's MCP panel/settings
+3. **Test Firebase MCP**: Ask AI to "list Firebase projects"
+4. **Test Vibe/Jira MCP**: Ask AI to "list Vibe projects" or "list Jira projects"
+5. **Test Bitbucket MCP** (if configured): Ask AI to "list Bitbucket repositories"
 
 ### Supported AI CLIs
 
