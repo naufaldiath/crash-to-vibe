@@ -10,7 +10,19 @@
   },
   "kanban": {
     "system": "vibe",
-    "projectName": "Your App Name - Mobile"
+    "projectName": "Your App Name - Mobile",
+    "projectId": "7a5de88c-ff9c-4388-8992-d291e77c6982"
+  },
+  "jira": {
+    "cloudId": "your-atlassian-cloud-id",
+    "projectKey": "PROJ",
+    "issueType": "Bug"
+  },
+  "bitbucket": {
+    "workspace": "your-workspace",
+    "repoSlug": "your-repo-name",
+    "targetBranch": "develop",
+    "reviewers": ["team-lead", "senior-dev"]
   },
   "execution": {
     "mode": "generate-only",
@@ -32,8 +44,8 @@
   },
   "aiAgents": [
     "claude",
-    "codex", 
+    "codex",
     "gemini",
-    "copilot"
+    "amp"
   ]
 }

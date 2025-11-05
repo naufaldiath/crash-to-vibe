@@ -17,16 +17,18 @@ class CrashAnalyzerGenerator {
       project: {},
       firebase: {},
       kanban: {},
+      jira: {},
+      bitbucket: {},
       execution: {
         mode: 'generate-only', // 'generate-only' or 'cli'
-        cli: null // 'claude', 'copilot', 'gemini', 'aider'
+        cli: null // 'claude', 'copilot', 'gemini', 'codex'
       },
       thresholds: {
         critical: { crashes: 800, users: 600 },
         high: { crashes: 400, users: 300 },
         medium: { crashes: 100, users: 50 }
       },
-      aiAgents: ['claude', 'aider', 'gemini', 'amp']
+      aiAgents: ['claude', 'codex', 'gemini', 'amp']
     };
     this.aiExecutorFactory = new AIExecutorFactory();
     this.cliArgs = this.parseCliArgs();
@@ -63,7 +65,7 @@ class CrashAnalyzerGenerator {
    */
   showHelp() {
     console.log(`
-🔥 Firebase Crashlytics to Vibe Kanban Workflow Generator
+🔥 Firebase Crashlytics to Task Management Workflow Generator
 
 Usage: crash-to-vibe [options]
 
@@ -77,6 +79,10 @@ Examples:
   crash-to-vibe --generate-only      # Only generate workflow file
   crash-to-vibe --cli claude         # Generate and execute with Claude Code
   crash-to-vibe --cli codex          # Generate and execute with Codex CLI
+
+Supported Task Management Systems:
+  - Vibe Kanban (via MCP)
+  - Jira (via Atlassian MCP)
 
 Supported AI CLIs:
   - Claude Code (claude)
@@ -480,21 +486,10 @@ Supported AI CLIs:
     
     console.log('\n📝 Please provide the following information:\n');
 
-    // Project configuration
-    this.config.project.directory = await this.promptUser(
-      'Project directory path', 
-      detected.directory
-    );
-    
-    this.config.project.name = await this.promptUser(
-      'Project display name', 
-      detected.name || path.basename(detected.directory)
-    );
-    
-    this.config.project.platform = await this.promptUser(
-      'Platform (android/ios/flutter)', 
-      detected.platform || 'android'
-    );
+    // Project configuration - use auto-detected values
+    this.config.project.directory = detected.directory;
+    this.config.project.name = detected.name || path.basename(detected.directory);
+    this.config.project.platform = detected.platform || 'android';
 
     // Firebase configuration with smart detection
     if (!detected.firebase.projectId) {
@@ -536,6 +531,7 @@ Supported AI CLIs:
       }
     } else {
       this.config.firebase.projectId = detected.firebase.projectId;
+      this.config.firebase.appId = detected.firebase.appId;
     }
 
     // Fallback to manual entry if still not found
@@ -549,21 +545,91 @@ Supported AI CLIs:
     if (!this.config.firebase.appId) {
       this.config.firebase.appId = await this.promptUser(
         'Firebase app ID', 
-        detected.firebase.appId || ''
+        ''
       );
-    } else if (!detected.firebase.appId) {
-      // Use the auto-detected app ID
-      this.config.firebase.appId = detected.firebase.appId;
     }
 
-    // Kanban configuration (automatically use Vibe Kanban)
-    this.config.kanban.system = 'vibe';
-    console.log('🎯 Using Vibe Kanban system');
-    
-    this.config.kanban.projectName = await this.promptUser(
-      'Vibe Kanban project name', 
-      `${this.config.project.name}`
+    // Kanban/Jira configuration
+    console.log('\n🎯 Task Management System Configuration');
+    const taskSystem = await this.promptUser(
+      'Select task management system (vibe/jira)',
+      'vibe'
     );
+
+    this.config.kanban.system = taskSystem.toLowerCase();
+
+    if (this.config.kanban.system === 'jira') {
+      console.log('🎯 Using Jira (Atlassian MCP)');
+
+      this.config.jira = this.config.jira || {};
+
+      this.config.jira.cloudId = await this.promptUser(
+        'Atlassian Cloud ID (or site URL, e.g., yoursite.atlassian.net)',
+        ''
+      );
+
+      this.config.jira.projectKey = await this.promptUser(
+        'Jira project key (e.g., PROJ)',
+        ''
+      );
+
+      this.config.jira.issueType = await this.promptUser(
+        'Default issue type (Bug/Task/Story)',
+        'Bug'
+      );
+
+      console.log('✅ Jira configuration completed');
+    } else {
+      console.log('🎯 Using Vibe Kanban system');
+
+      this.config.kanban.projectName = await this.promptUser(
+        'Vibe Kanban project name',
+        `${this.config.project.name}`
+      );
+
+      console.log('✅ Vibe Kanban configuration completed');
+    }
+
+    // Bitbucket configuration (optional for PR creation)
+    console.log('\n🔀 Bitbucket Configuration (optional - for automated PR creation)');
+    const useBitbucket = await this.promptUser(
+      'Enable Bitbucket PR creation? (y/N)', 
+      'N'
+    );
+    
+    if (useBitbucket.toLowerCase() === 'y') {
+      this.config.bitbucket.workspace = await this.promptUser(
+        'Bitbucket workspace', 
+        ''
+      );
+      
+      this.config.bitbucket.repoSlug = await this.promptUser(
+        'Bitbucket repository slug', 
+        ''
+      );
+      
+      this.config.bitbucket.targetBranch = await this.promptUser(
+        'Target branch for PRs', 
+        'develop'
+      );
+      
+      const addReviewers = await this.promptUser(
+        'Add default reviewers? (y/N)', 
+        'N'
+      );
+      
+      if (addReviewers.toLowerCase() === 'y') {
+        const reviewers = await this.promptUser(
+          'Reviewer usernames (comma-separated)', 
+          ''
+        );
+        this.config.bitbucket.reviewers = reviewers.split(',').map(r => r.trim()).filter(r => r);
+      }
+      
+      console.log('✅ Bitbucket integration configured');
+    } else {
+      console.log('⏭️  Skipping Bitbucket configuration');
+    }
 
     // Optional: Custom thresholds
     const customizeThresholds = await this.promptUser(
@@ -605,7 +671,7 @@ Supported AI CLIs:
       const executor = this.aiExecutorFactory.getExecutor(this.cliArgs.forceCli);
       if (!executor) {
         console.log(`❌ Unknown CLI: ${this.cliArgs.forceCli}`);
-        console.log('   Supported CLIs: claude, copilot, gemini, aider');
+        console.log('   Supported CLIs: claude, copilot, gemini, codex');
         process.exit(1);
       }
       
@@ -628,9 +694,34 @@ Supported AI CLIs:
       return;
     }
 
-    // Interactive mode: detect and prompt
+    // Interactive mode: ask user preference first
+    console.log('\n🤖 Execution Mode Selection');
+    console.log('1. Generate workflow file only (manual execution)');
+    console.log('2. Generate and execute with AI CLI (automated)');
+    
+    const modeChoice = await this.promptUser(
+      'Select mode (1-2)',
+      '1'
+    );
+
+    if (modeChoice === '1') {
+      console.log('📝 Generating workflow file only');
+      this.config.execution.mode = 'generate-only';
+      return;
+    }
+
+    // User wants AI execution, now detect available CLIs
     console.log('\n🔍 Detecting available AI CLIs...');
-    const availableExecutors = this.aiExecutorFactory.detectAvailableExecutors();
+    
+    let availableExecutors;
+    try {
+      availableExecutors = this.aiExecutorFactory.detectAvailableExecutors();
+    } catch (error) {
+      console.log(`\n❌ Error detecting AI CLIs: ${error.message}`);
+      console.log('⚠️  Falling back to generate-only mode');
+      this.config.execution.mode = 'generate-only';
+      return;
+    }
     
     if (availableExecutors.length === 0) {
       console.log('⚠️  No AI CLIs detected');
@@ -641,8 +732,13 @@ Supported AI CLIs:
 
     // Check authentication for available executors
     const readyExecutors = availableExecutors.filter(executor => {
-      const authStatus = executor.checkAuth();
-      return authStatus.authenticated;
+      try {
+        const authStatus = executor.checkAuth();
+        return authStatus.authenticated;
+      } catch (error) {
+        console.log(`   ⚠️  ${executor.displayName}: Error checking auth - ${error.message}`);
+        return false;
+      }
     });
 
     console.log(`\n✅ Found ${availableExecutors.length} installed AI CLI(s):`);
@@ -733,7 +829,10 @@ Supported AI CLIs:
       '{{FIREBASE_PROJECT_ID}}': this.config.firebase.projectId,
       '{{APP_ID}}': this.config.firebase.appId,
       '{{KANBAN_SYSTEM}}': this.config.kanban.system,
-      '{{KANBAN_PROJECT_NAME}}': this.config.kanban.projectName,
+      '{{KANBAN_PROJECT_NAME}}': this.config.kanban.projectName || this.config.project.name,
+      '{{JIRA_CLOUD_ID}}': this.config.jira?.cloudId || 'your-atlassian-cloud-id',
+      '{{JIRA_PROJECT_KEY}}': this.config.jira?.projectKey || 'PROJ',
+      '{{JIRA_ISSUE_TYPE}}': this.config.jira?.issueType || 'Bug',
       '{{CRITICAL_CRASHES}}': this.config.thresholds.critical.crashes,
       '{{HIGH_CRASHES}}': this.config.thresholds.high.crashes,
       '{{MEDIUM_CRASHES}}': this.config.thresholds.medium.crashes,
@@ -741,7 +840,12 @@ Supported AI CLIs:
       '{{HIGH_USERS}}': this.config.thresholds.high.users,
       '{{MEDIUM_USERS}}': this.config.thresholds.medium.users,
       '{{FIREBASE_CONFIG_FILE}}': this.config.firebase.configFile || 'auto-detected',
-      '{{FIREBASE_ENVIRONMENT}}': this.config.firebase.environment || 'default'
+      '{{FIREBASE_ENVIRONMENT}}': this.config.firebase.environment || 'default',
+      '{{BITBUCKET_WORKSPACE}}': this.config.bitbucket?.workspace || 'your-workspace',
+      '{{BITBUCKET_REPO_SLUG}}': this.config.bitbucket?.repoSlug || 'your-repo',
+      '{{BITBUCKET_TARGET_BRANCH}}': this.config.bitbucket?.targetBranch || 'develop',
+      '{{BITBUCKET_REVIEWERS}}': this.config.bitbucket?.reviewers?.join(', ') || 'team-lead',
+      '{{BITBUCKET_ENABLED}}': this.config.bitbucket?.workspace ? 'enabled' : 'disabled'
     };
 
     for (const [placeholder, value] of Object.entries(replacements)) {

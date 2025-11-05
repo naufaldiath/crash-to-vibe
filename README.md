@@ -114,7 +114,7 @@ crash-to-vibe --help
 | Priority | Threshold | Timeline | AI Agent |
 |----------|-----------|----------|----------|
 | 🔥 **CRITICAL** | >800 crashes OR >600 users | This week | Claude Code |
-| ⚠️ **HIGH** | >400 crashes OR >300 users | This sprint | Aider |
+| ⚠️ **HIGH** | >400 crashes OR >300 users | This sprint | Codex |
 | 🔶 **MEDIUM** | >100 crashes OR >50 users | Next sprint | Gemini CLI |
 | 📊 **LOW** | <100 crashes | Backlog | Setup Script |
 

@@ -1,0 +1,48 @@
+{
+  "project": {
+    "directory": "/Users/naufaldirfq/Documents/mekari/talenta-ios",
+    "name": "talenta-ios",
+    "platform": "ios"
+  },
+  "firebase": {
+    "projectId": "talenta-production",
+    "appId": "1:342657588726:ios:e3bd618a5c27ebb6"
+  },
+  "kanban": {
+    "system": "jira"
+  },
+  "jira": {
+    "cloudId": "jurnal.atlassian.net",
+    "projectKey": "TLMN",
+    "issueType": "Bug"
+  },
+  "bitbucket": {
+    "workspace": "mid-kelola-indonesia",
+    "repoSlug": "talenta-ios",
+    "targetBranch": "develop"
+  },
+  "execution": {
+    "mode": "generate-only",
+    "cli": null
+  },
+  "thresholds": {
+    "critical": {
+      "crashes": 800,
+      "users": 600
+    },
+    "high": {
+      "crashes": 400,
+      "users": 300
+    },
+    "medium": {
+      "crashes": 100,
+      "users": 50
+    }
+  },
+  "aiAgents": [
+    "claude",
+    "codex",
+    "gemini",
+    "amp"
+  ]
+}

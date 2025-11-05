@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a CLI tool that generates AI-powered Firebase Crashlytics to Vibe Kanban automation workflows. The tool:
+This is a CLI tool that generates AI-powered Firebase Crashlytics to Task Management automation workflows. The tool:
 - Auto-detects Firebase configuration files (google-services.json, GoogleService-Info.plist) recursively in projects
 - Supports Android, iOS, and Flutter projects
-- Generates workflow markdown files optimized for AI agent execution (Claude Code, Aider, Gemini CLI, Amp)
+- Supports multiple task management systems: **Vibe Kanban** and **Jira** (via Atlassian MCP)
+- Generates workflow markdown files optimized for AI agent execution (Claude Code, Codex, Gemini CLI, Amp)
 - Creates comprehensive crash analysis tasks with priority classification
 
 ## Key Commands
@@ -29,7 +30,7 @@ crash-to-vibe --generate-only
 
 # Execute with specific AI CLI
 crash-to-vibe --cli claude
-crash-to-vibe --cli aider
+crash-to-vibe --cli codex
 crash-to-vibe --cli gemini
 crash-to-vibe --cli copilot
 
@@ -91,7 +92,7 @@ The tool is a single-file Node.js application ([generate-crash-analyzer.js](gene
    - AI CLI detection and execution mode selection
 
 4. **AI CLI Integration** (`AIExecutorFactory`, AI executor classes in [ai-executors.js](ai-executors.js))
-   - Auto-detects installed AI CLIs (Claude, Copilot, Gemini, Aider)
+   - Auto-detects installed AI CLIs (Claude, Copilot, Gemini, Codex)
    - Validates authentication status for each CLI
    - Executes workflows with selected AI CLI
    - Logs execution output to crashAnalyzer.execution.log
@@ -115,7 +116,7 @@ The [crashAnalyzer.template.md](crashAnalyzer.template.md) contains:
 - Vibe Kanban task creation templates optimized for AI agents
 - Priority classification system based on crash/user thresholds
 - Platform-specific issue guidance (Android/iOS/Flutter)
-- AI agent recommendations (Claude Code for analysis, Aider for refactoring, Gemini for performance, Amp for debugging)
+- AI agent recommendations (Claude Code for analysis, Codex for refactoring, Gemini for performance, Amp for debugging)
 
 ### Configuration Schema
 
@@ -134,23 +135,49 @@ Configuration follows this structure (see [config.example.json](config.example.j
     environment: string   // Detected environment (Production, Development, etc.)
   },
   kanban: {
-    system: 'vibe',       // Currently only Vibe Kanban supported
-    projectName: string   // Kanban project name
+    system: string,       // 'vibe' or 'jira'
+    projectName: string,  // Vibe Kanban project name (when system='vibe')
+    projectId: string     // Vibe Kanban project ID (UUID)
+  },
+  jira: {
+    cloudId: string,      // Atlassian Cloud ID (when system='jira')
+    projectKey: string,   // Jira project key (e.g., 'PROJ')
+    issueType: string     // Default issue type ('Bug', 'Task', 'Story')
   },
   execution: {
     mode: string,         // 'generate-only' or 'cli'
-    cli: string          // 'claude', 'copilot', 'gemini', 'aider', or null
+    cli: string          // 'claude', 'copilot', 'gemini', 'codex', or null
   },
   thresholds: {
     critical: { crashes: number, users: number },
     high: { crashes: number, users: number },
     medium: { crashes: number, users: number }
   },
-  aiAgents: ['claude', 'aider', 'gemini', 'amp']
+  aiAgents: ['claude', 'codex', 'gemini', 'amp']
 }
 ```
 
 ## Key Patterns
+
+### Task Management System Selection
+Users can choose between two task management systems during configuration:
+
+**Vibe Kanban**:
+- Uses `mcp_vibe_kanban` MCP server
+- Tasks are created with `mcp_vibe_kanban_create_task`
+- Supports AI agent execution for automated fixes
+- Requires project name and extracts project ID during workflow execution
+- AI agents (Claude Code, Codex, Gemini CLI, Amp) can directly execute tasks
+
+**Jira (Atlassian MCP)**:
+- Uses `mcp_atlassian` MCP server
+- Issues are created with `mcp_atlassian_createJiraIssue`
+- Requires Atlassian Cloud ID, project key, and issue type
+- Supports priority levels, labels, and assignees
+- Integrates with existing Jira workflows
+- Can link to Bitbucket PRs for seamless development workflow
+
+The template dynamically adapts based on the selected system, providing system-specific instructions using conditional logic (`{{#if (eq KANBAN_SYSTEM "vibe")}}` / `{{#if (eq KANBAN_SYSTEM "jira")}}`).
 
 ### Multi-Environment Support
 When multiple Firebase configs are found:
@@ -256,7 +283,7 @@ This is a pure Node.js tool with zero external dependencies:
 
 The generated workflow is optimized for four AI agents:
 - **Claude Code**: Complex crash analysis, lifecycle issues, concurrency problems
-- **Aider**: Code refactoring, file editing, bulk improvements
+- **Codex**: Code refactoring, file editing, bulk improvements
 - **Gemini CLI**: Performance optimization, API compatibility analysis
 - **Amp**: Collaborative debugging, comprehensive test suites
 
@@ -265,3 +292,44 @@ Each task template includes:
 - AI-executable action items with measurable criteria
 - File paths and investigation targets for AI context
 - Acceptance criteria verifiable by automated tools
+
+## Coding Conventions
+
+When suggesting code for this project:
+
+### File Structure
+- Single-file architecture: Keep all logic in [generate-crash-analyzer.js](generate-crash-analyzer.js)
+- Separate template file: [crashAnalyzer.template.md](crashAnalyzer.template.md) for workflow templates
+- Configuration examples: Use [config.example.json](config.example.json) as reference
+
+### Code Style
+- Use ES6+ features (const/let, arrow functions, template literals)
+- Prefer synchronous operations for CLI tool simplicity
+- Use descriptive method names following camelCase convention
+- Keep methods focused on single responsibilities
+
+### Error Handling
+- Use try-catch blocks for file operations and external commands
+- Provide user-friendly error messages with actionable guidance
+- Gracefully degrade when Firebase CLI is unavailable
+- Log warnings for skipped directories during traversal
+
+### User Interaction
+- Use readline for interactive prompts
+- Provide intelligent defaults from auto-detection
+- Show clear progress indicators and success messages
+- Validate user input before proceeding
+
+### Comments
+- Add JSDoc comments for class methods
+- Include inline comments for complex regex or parsing logic
+- Document placeholder patterns in template
+- Explain threshold values and their impact
+
+## Git Workflow
+
+- Main branch: `main`
+- Keep commits atomic and descriptive
+- Update CLAUDE.md and copilot-instructions.md when adding features
+- Test globally (`npm link`) before publishing
+- Update package.json version following semver

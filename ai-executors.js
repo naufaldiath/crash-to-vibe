@@ -4,6 +4,28 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Timeout for CLI detection commands (5 seconds)
+const CLI_CHECK_TIMEOUT = 5000;
+
+/**
+ * Safely execute a command with timeout
+ * @param {string} command 
+ * @param {number} timeout 
+ * @returns {object} { success: boolean, output: string }
+ */
+function safeExec(command, timeout = CLI_CHECK_TIMEOUT) {
+  try {
+    const output = execSync(command, { 
+      encoding: 'utf8', 
+      stdio: 'pipe',
+      timeout: timeout
+    });
+    return { success: true, output };
+  } catch (error) {
+    return { success: false, output: null, error: error.message };
+  }
+}
+
 /**
  * Base class for AI CLI executors
  */
@@ -95,24 +117,19 @@ class ClaudeExecutor extends AIExecutor {
   }
 
   isInstalled() {
-    try {
-      execSync('which claude', { encoding: 'utf8', stdio: 'pipe' });
-      return true;
-    } catch {
-      return false;
-    }
+    const result = safeExec('which claude');
+    return result.success;
   }
 
   checkAuth() {
-    try {
-      const output = execSync('claude auth status', { encoding: 'utf8', stdio: 'pipe' });
-      if (output.toLowerCase().includes('authenticated') || output.toLowerCase().includes('logged in')) {
+    const result = safeExec('claude auth status');
+    if (result.success && result.output) {
+      if (result.output.toLowerCase().includes('authenticated') || 
+          result.output.toLowerCase().includes('logged in')) {
         return { authenticated: true, message: 'Authenticated' };
       }
-      return { authenticated: false, message: 'Not authenticated' };
-    } catch (error) {
-      return { authenticated: false, message: error.message };
     }
+    return { authenticated: false, message: 'Not authenticated' };
   }
 
   getCommand(workflowPath) {
@@ -142,28 +159,23 @@ class CopilotExecutor extends AIExecutor {
   }
 
   isInstalled() {
-    try {
-      execSync('which copilot', { encoding: 'utf8', stdio: 'pipe' });
-      return true;
-    } catch {
-      return false;
-    }
+    const result = safeExec('which copilot');
+    return result.success;
   }
 
   checkAuth() {
-    try {
-      // Copilot CLI uses GitHub authentication via PAT or OAuth
-      // Try to check if authenticated by running a simple command
-      execSync('copilot --version', { encoding: 'utf8', stdio: 'pipe' });
-      // Check for authentication tokens
-      if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) {
-        return { authenticated: true, message: 'Authenticated via token' };
-      }
-      // Try to detect if logged in via copilot login check (assumes user is logged in if copilot runs)
-      return { authenticated: true, message: 'Authenticated' };
-    } catch (error) {
+    const versionCheck = safeExec('copilot --version');
+    if (!versionCheck.success) {
       return { authenticated: false, message: 'Not authenticated or not installed' };
     }
+    
+    // Check for authentication tokens
+    if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) {
+      return { authenticated: true, message: 'Authenticated via token' };
+    }
+    
+    // Assume authenticated if copilot runs
+    return { authenticated: true, message: 'Authenticated' };
   }
 
   getCommand(workflowPath) {
@@ -199,25 +211,19 @@ class GeminiExecutor extends AIExecutor {
   }
 
   isInstalled() {
-    try {
-      execSync('which gemini', { encoding: 'utf8', stdio: 'pipe' });
-      return true;
-    } catch {
-      return false;
-    }
+    const result = safeExec('which gemini');
+    return result.success;
   }
 
   checkAuth() {
-    try {
-      const output = execSync('gemini auth status', { encoding: 'utf8', stdio: 'pipe' });
-      if (output.toLowerCase().includes('authenticated') || output.toLowerCase().includes('logged in')) {
+    const result = safeExec('gemini auth status');
+    if (result.success && result.output) {
+      if (result.output.toLowerCase().includes('authenticated') || 
+          result.output.toLowerCase().includes('logged in')) {
         return { authenticated: true, message: 'Authenticated' };
       }
-      return { authenticated: false, message: 'Not authenticated' };
-    } catch (error) {
-      // If command fails, assume not authenticated
-      return { authenticated: false, message: 'Authentication status unknown' };
     }
+    return { authenticated: false, message: 'Not authenticated' };
   }
 
   getCommand(workflowPath) {
@@ -247,12 +253,8 @@ class CodexExecutor extends AIExecutor {
   }
 
   isInstalled() {
-    try {
-      execSync('which codex', { encoding: 'utf8', stdio: 'pipe' });
-      return true;
-    } catch {
-      return false;
-    }
+    const result = safeExec('which codex');
+    return result.success;
   }
 
   checkAuth() {
@@ -323,30 +325,58 @@ class AIExecutorFactory {
   }
 
   /**
-   * Detect all installed and available AI CLIs
+   * Detect all installed and available AI CLIs with progress indication
    * @returns {AIExecutor[]}
    */
   detectAvailableExecutors() {
-    return this.executors.filter(executor => executor.isInstalled());
+    const available = [];
+    
+    for (const executor of this.executors) {
+      try {
+        process.stdout.write(`   Checking ${executor.displayName}... `);
+        
+        if (executor.isInstalled()) {
+          available.push(executor);
+          console.log('✓');
+        } else {
+          console.log('✗');
+        }
+      } catch (error) {
+        console.log(`✗ (error: ${error.message})`);
+      }
+    }
+    
+    return available;
   }
 
   /**
-   * Get detailed status of all executors
+   * Get detailed status of all executors with timeout protection
    * @returns {object[]}
    */
   getExecutorStatus() {
     return this.executors.map(executor => {
-      const installed = executor.isInstalled();
-      const authStatus = installed ? executor.checkAuth() : { authenticated: false, message: 'Not installed' };
-      
-      return {
-        name: executor.name,
-        displayName: executor.displayName,
-        installed,
-        authenticated: authStatus.authenticated,
-        status: authStatus.message,
-        ready: installed && authStatus.authenticated
-      };
+      try {
+        const installed = executor.isInstalled();
+        const authStatus = installed ? executor.checkAuth() : { authenticated: false, message: 'Not installed' };
+        
+        return {
+          name: executor.name,
+          displayName: executor.displayName,
+          installed,
+          authenticated: authStatus.authenticated,
+          status: authStatus.message,
+          ready: installed && authStatus.authenticated
+        };
+      } catch (error) {
+        return {
+          name: executor.name,
+          displayName: executor.displayName,
+          installed: false,
+          authenticated: false,
+          status: `Error: ${error.message}`,
+          ready: false
+        };
+      }
     });
   }
 }

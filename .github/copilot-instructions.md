@@ -4,10 +4,11 @@ This file provides guidance to GitHub Copilot when working with code in this rep
 
 ## Project Overview
 
-This is a CLI tool that generates AI-powered Firebase Crashlytics to Vibe Kanban automation workflows. The tool:
+This is a CLI tool that generates AI-powered Firebase Crashlytics to Task Management automation workflows. The tool:
 - Auto-detects Firebase configuration files (google-services.json, GoogleService-Info.plist) recursively in projects
 - Supports Android, iOS, and Flutter projects
-- Generates workflow markdown files optimized for AI agent execution (Claude Code, Aider, Gemini CLI, Amp)
+- Supports multiple task management systems: **Vibe Kanban** and **Jira** (via Atlassian MCP)
+- Generates workflow markdown files optimized for AI agent execution (Claude Code, Codex, Gemini CLI, Amp)
 - Creates comprehensive crash analysis tasks with priority classification
 
 ## Key Commands
@@ -29,7 +30,7 @@ crash-to-vibe --generate-only
 
 # Execute with specific AI CLI
 crash-to-vibe --cli claude
-crash-to-vibe --cli aider
+crash-to-vibe --cli codex
 crash-to-vibe --cli gemini
 crash-to-vibe --cli copilot
 
@@ -106,7 +107,7 @@ The `crashAnalyzer.template.md` contains:
 - Vibe Kanban task creation templates optimized for AI agents
 - Priority classification system based on crash/user thresholds
 - Platform-specific issue guidance (Android/iOS/Flutter)
-- AI agent recommendations (Claude Code for analysis, Aider for refactoring, Gemini for performance, Amp for debugging)
+- AI agent recommendations (Claude Code for analysis, Codex for refactoring, Gemini for performance, Amp for debugging)
 
 ### Configuration Schema
 
@@ -125,19 +126,45 @@ Configuration follows this structure (see `config.example.json`):
     environment: string   // Detected environment (Production, Development, etc.)
   },
   kanban: {
-    system: 'vibe',       // Currently only Vibe Kanban supported
-    projectName: string   // Kanban project name
+    system: string,       // 'vibe' or 'jira'
+    projectName: string,  // Vibe Kanban project name (when system='vibe')
+    projectId: string     // Vibe Kanban project ID (UUID)
+  },
+  jira: {
+    cloudId: string,      // Atlassian Cloud ID (when system='jira')
+    projectKey: string,   // Jira project key (e.g., 'PROJ')
+    issueType: string     // Default issue type ('Bug', 'Task', 'Story')
   },
   thresholds: {
     critical: { crashes: number, users: number },
     high: { crashes: number, users: number },
     medium: { crashes: number, users: number }
   },
-  aiAgents: ['claude', 'aider', 'gemini', 'amp']
+  aiAgents: ['claude', 'codex', 'gemini', 'amp']
 }
 ```
 
 ## Code Patterns & Best Practices
+
+### Task Management System Selection
+Users can choose between two task management systems during configuration:
+
+**Vibe Kanban**:
+- Uses `mcp_vibe_kanban` MCP server
+- Tasks are created with `mcp_vibe_kanban_create_task`
+- Supports AI agent execution for automated fixes
+- Requires project name and extracts project ID during workflow execution
+- AI agents (Claude Code, Codex, Gemini CLI, Amp) can directly execute tasks
+
+**Jira (Atlassian MCP)**:
+- Uses `mcp_atlassian` MCP server
+- Issues are created with `mcp_atlassian_createJiraIssue`
+- Requires Atlassian Cloud ID, project key, and issue type
+- Supports priority levels, labels, and assignees
+- Integrates with existing Jira workflows
+- Can link to Bitbucket PRs for seamless development workflow
+
+The template dynamically adapts based on the selected system, providing system-specific instructions using conditional logic (`{{#if (eq KANBAN_SYSTEM "vibe")}}` / `{{#if (eq KANBAN_SYSTEM "jira")}}`).
 
 ### Multi-Environment Support
 When multiple Firebase configs are found:
@@ -243,7 +270,7 @@ This is a pure Node.js tool with zero external dependencies:
 
 The generated workflow is optimized for four AI agents:
 - **Claude Code**: Complex crash analysis, lifecycle issues, concurrency problems
-- **Aider**: Code refactoring, file editing, bulk improvements
+- **Codex**: Code refactoring, file editing, bulk improvements
 - **Gemini CLI**: Performance optimization, API compatibility analysis
 - **Amp**: Collaborative debugging, comprehensive test suites
 

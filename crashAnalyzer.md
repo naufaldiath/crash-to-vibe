@@ -1,18 +1,18 @@
-# 🔥 Firebase Crashlytics to {{KANBAN_SYSTEM}} - AI-Powered Automation Workflow
+# 🔥 Firebase Crashlytics to jira - AI-Powered Automation Workflow
 
 ## 🎯 EXECUTE THIS COMPREHENSIVE WORKFLOW
 
-You are a Firebase Crashlytics and {{KANBAN_SYSTEM}} automation specialist. Execute this complete workflow to fetch Firebase crash data (both FATAL and NON-FATAL) and create corresponding detailed tasks for the {{PROJECT_NAME}} {{PLATFORM}} project. This workflow covers both fatal crashes that cause app termination and non-fatal issues that impact user experience.
+You are a Firebase Crashlytics and jira automation specialist. Execute this complete workflow to fetch Firebase crash data (both FATAL and NON-FATAL) and create corresponding detailed tasks for the talenta-mobile-android android project. This workflow covers both fatal crashes that cause app termination and non-fatal issues that impact user experience.
 
-**🤖 AI Integration**: Tasks created through this workflow can be automatically executed by AI agents (Claude Code, Codex, Gemini CLI, Amp) for immediate problem resolution without manual intervention.
+**🤖 AI Integration**: Tasks created through this workflow can be automatically executed by AI agents (Claude Code, Aider, Gemini CLI, Amp) for immediate problem resolution without manual intervention.
 
 ## 📋 STEP-BY-STEP EXECUTION
 
 ### STEP 1: SETUP FIREBASE ENVIRONMENT
 ```
 1. Use mcp_firebase_firebase_update_environment to set:
-   - project_dir: "{{PROJECT_DIR}}"
-   - active_project: "{{FIREBASE_PROJECT_ID}}"
+   - project_dir: "/Users/naufaldirfq/Documents/mekari/talenta-mobile-android"
+   - active_project: "talenta-production"
 
 2. Verify setup with mcp_firebase_firebase_get_environment
 
@@ -25,13 +25,13 @@ You are a Firebase Crashlytics and {{KANBAN_SYSTEM}} automation specialist. Exec
 ```
 1. Get FATAL crashes (Current tool limitation: ~7-8 day period):
    - Use mcp_firebase_crashlytics_list_top_issues
-   - app_id: "{{APP_ID}}"
+   - app_id: "1:342657588726:android:8b101aa1e055fba4"
    - issue_count: 15 (reasonable limit for fatal crashes - API max is 100 per call)
    - issue_type: "FATAL"
 
 2. Get NON-FATAL issues:
    - Use mcp_firebase_crashlytics_list_top_issues
-   - app_id: "{{APP_ID}}"
+   - app_id: "1:342657588726:android:8b101aa1e055fba4"
    - issue_count: 10 (reasonable limit for non-fatal issues)
    - issue_type: "NON-FATAL"
 
@@ -52,7 +52,7 @@ For EACH issue fetched in Phase A (prioritize top 5-10 most critical):
 
 1. Get detailed issue information:
    - Use mcp_firebase_crashlytics_get_issue_details
-   - app_id: "{{APP_ID}}"
+   - app_id: "1:342657588726:android:8b101aa1e055fba4"
    - issue_id: [Issue ID from Phase A]
 
    Extract additional details:
@@ -65,20 +65,17 @@ For EACH issue fetched in Phase A (prioritize top 5-10 most critical):
 
 2. Get sample crash report:
    - Use mcp_firebase_crashlytics_get_sample_crash_for_issue
-   - app_id: "{{APP_ID}}"
+   - app_id: "1:342657588726:android:8b101aa1e055fba4"
    - issue_id: [Issue ID from Phase A]
 
    Extract crash sample details:
-   - **CRITICAL: Full exception stacktrace with line numbers** - This MUST be included in the task description
+   - Full exception stacktrace with line numbers
    - Device information (model, OS version, orientation)
    - Memory usage at crash time
    - User activity before crash
    - Custom log messages
    - Thread information
    - Application state
-
-   ⚠️ IMPORTANT: The actual stacktrace text from this API response MUST be copied into the task description.
-   Do NOT use placeholders like "[Full stacktrace here]" - include the real stacktrace data.
 
 3. Identify "Fresh Issues":
    - Check if firstSeenVersion == lastSeenVersion (new to current version)
@@ -97,7 +94,6 @@ For each issue, compile a complete crash profile:
    - Signals: fresh, regressed, early, repetitive
 
 2. Detailed Analysis (from Phase B):
-   - **ACTUAL stacktrace text** (not placeholder - copy the real stacktrace from API response)
    - Root cause file and line number
    - Affected device models and OS versions
    - Memory/performance patterns
@@ -117,20 +113,20 @@ For each issue, compile a complete crash profile:
    - Detailed fetching recommended for top 5-10 issues to avoid rate limits
 ```
 
-### STEP 3: IDENTIFY TARGET PROJECT ({{KANBAN_SYSTEM}})
+### STEP 3: IDENTIFY TARGET PROJECT (jira)
 
 {{#if (eq KANBAN_SYSTEM "vibe")}}
 #### VIBE KANBAN SETUP
 ```
 1. Use mcp_vibe_kanban_list_projects to get available projects
 
-2. Find "{{KANBAN_PROJECT_NAME}}" project and extract project_id
+2. Find "talenta-mobile-android" project and extract project_id
    - Expected project_id format: UUID string (e.g., 7a5de88c-ff9c-4388-8992-d291e77c6982)
-   - Project name should match: "{{KANBAN_PROJECT_NAME}}"
+   - Project name should match: "talenta-mobile-android"
 
 3. Note: Vibe Kanban supports AI agent execution for automated task resolution
    - AI agents can analyze crashes and generate fixes automatically
-   - Supported agents: Claude Code, Codex, Gemini CLI, Amp
+   - Supported agents: Claude Code, Aider, Gemini CLI, Amp
    - Tasks will be ready for immediate AI execution after creation
 ```
 {{/if}}
@@ -143,20 +139,20 @@ For each issue, compile a complete crash profile:
 
 2. Get accessible Atlassian resources:
    Use mcp_atlassian_getAccessibleAtlassianResources
-   - Verify cloudId: "{{JIRA_CLOUD_ID}}"
+   - Verify cloudId: "jurnal.atlassian.net"
    - If cloudId not found, use the site URL to resolve it
 
 3. Verify Jira project:
    Use mcp_atlassian_getVisibleJiraProjects
-   - cloudId: "{{JIRA_CLOUD_ID}}"
+   - cloudId: "jurnal.atlassian.net"
    - action: "create" (to see projects where you can create issues)
-   - Find project with key: "{{JIRA_PROJECT_KEY}}"
+   - Find project with key: "TLMN"
 
 4. Get issue type metadata:
    Use mcp_atlassian_getJiraProjectIssueTypesMetadata
-   - cloudId: "{{JIRA_CLOUD_ID}}"
-   - projectIdOrKey: "{{JIRA_PROJECT_KEY}}"
-   - Verify issue type "{{JIRA_ISSUE_TYPE}}" is available
+   - cloudId: "jurnal.atlassian.net"
+   - projectIdOrKey: "TLMN"
+   - Verify issue type "Bug" is available
 
 5. Note: Jira issues will contain all crash details and can be linked to PRs
    - Issues include full stacktraces and device information
@@ -168,20 +164,20 @@ For each issue, compile a complete crash profile:
 ### STEP 4: ANALYZE AND PRIORITIZE ISSUES
 ```
 Priority Classification (~8-day period):
-- 🔥 CRITICAL: >{{CRITICAL_CRASHES}} crashes OR >{{CRITICAL_USERS}} users affected (~8-day period)
+- 🔥 CRITICAL: >800 crashes OR >600 users affected (~8-day period)
   - Boost priority for "Fresh Issue" signal (new to latest version)
   - Consider crash-free users % drop (target: maintain >99.5%)
-- 🔥 HIGH: >{{HIGH_CRASHES}} crashes OR >{{HIGH_USERS}} users affected (~8-day period)
+- 🔥 HIGH: >400 crashes OR >300 users affected (~8-day period)
   - Prioritize "Regressed" issues (previously fixed, now returned)
   - Factor in device/OS version distribution
-- ⚡ MEDIUM: >{{MEDIUM_CRASHES}} crashes OR >{{MEDIUM_USERS}} users affected (~8-day period) OR high event volume (>500K)
+- ⚡ MEDIUM: >100 crashes OR >50 users affected (~8-day period) OR high event volume (>500K)
   - Consider "Repetitive" signal (multiple crashes per user)
   - Evaluate "Early" signal (crashes within first 5 seconds)
-- 📊 LOW: <{{MEDIUM_CRASHES}} crashes OR monitoring/prevention tasks
+- 📊 LOW: <100 crashes OR monitoring/prevention tasks
   - Include for comprehensive tracking
   - Useful for pattern detection
 
-Focus Areas for {{PLATFORM}} Projects:
+Focus Areas for android Projects:
 {{#if (eq PLATFORM "android")}}
 - ViewBinding/Fragment lifecycle crashes (both fatal and non-fatal)
 - Activity lifecycle management errors
@@ -235,7 +231,7 @@ Description:
 **Priority**: CRITICAL - Fix this week{{#if fresh}} ⚠️ NEW IN LATEST VERSION{{/if}}
 
 **🤖 AI Agent Recommendations**:
-- **Best Agent**: Claude Code (for complex logic) or Codex (for file editing)
+- **Best Agent**: Claude Code (for complex logic) or Aider (for file editing)
 - **Execution Type**: Automated with human review
 - **Expected Resolution Time**: 2-4 hours
 
@@ -252,19 +248,11 @@ Description:
 
 **Detailed Stacktrace** (from sample crash):
 ```
-IMPORTANT: Insert the ACTUAL full stacktrace from mcp_firebase_crashlytics_get_sample_crash_for_issue here.
-Do NOT leave this as a placeholder - include the complete stacktrace with file names and line numbers.
-
-Example format (replace with actual stacktrace):
+[Full exception stacktrace with file names and line numbers]
+Example:
   at com.example.app.MyClass.myMethod(MyClass.kt:123)
   at com.example.app.BaseClass.onCreate(BaseClass.kt:45)
-  at android.app.Activity.performCreate(Activity.java:8000)
   ...
-
-The stacktrace should show:
-- Exception type and message
-- Complete call stack with file:line references
-- All frames from crash point to app entry point
 ```
 
 **Crash Context** (from detailed issue data):
@@ -310,15 +298,15 @@ The stacktrace should show:
    - **Create Pull Request** (if Bitbucket enabled):
      ```
      Use mcp_bitbucket_createDraftPullRequest:
-     - workspace: "{{BITBUCKET_WORKSPACE}}"
-     - repo_slug: "{{BITBUCKET_REPO_SLUG}}"
+     - workspace: "mid-kelola-indonesia"
+     - repo_slug: "talenta-mobile-android"
      - title: "Fix: [Issue Title] - #[Firebase Issue ID]"
      - description: Include Firebase link, Vibe task link, stacktrace, root cause, solution, and testing checklist
      - sourceBranch: "[AI-created branch name]"
-     - targetBranch: "{{BITBUCKET_TARGET_BRANCH}}"
-     - reviewers: [{{BITBUCKET_REVIEWERS}}]
+     - targetBranch: "develop"
+     - reviewers: [team-lead]
      
-     Create PR in repository: {{BITBUCKET_WORKSPACE}}/{{BITBUCKET_REPO_SLUG}}
+     Create PR in repository: mid-kelola-indonesia/talenta-mobile-android
      ```
 
 5. **Regression Prevention**:
@@ -367,9 +355,9 @@ Use mcp_vibe_kanban_create_task:
 **Jira Issue Creation**:
 ```
 Use mcp_atlassian_createJiraIssue:
-- cloudId: "{{JIRA_CLOUD_ID}}"
-- projectKey: "{{JIRA_PROJECT_KEY}}"
-- issueTypeName: "{{JIRA_ISSUE_TYPE}}"
+- cloudId: "jurnal.atlassian.net"
+- projectKey: "TLMN"
+- issueTypeName: "Bug"
 - summary: [Title from template above]
 - description: [Complete description from template above - in Markdown format]
 - additional_fields: {
@@ -379,73 +367,6 @@ Use mcp_atlassian_createJiraIssue:
 
 Optional: Assign to team member
 - assignee_account_id: [Use mcp_atlassian_lookupJiraAccountId to find user by email/name]
-```
-
-**Before Starting Work - Create Bugfix Branch**:
-```
-IMPORTANT: Before executing this ticket, create a new branch following the bugfix naming convention:
-
-Branch naming format: bugfix/{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER]_[brief-description]
-Source branch: develop
-
-Example: bugfix/{{JIRA_PROJECT_KEY}}-1234_fix-crash-on-base-activity
-
-Steps:
-1. Ensure you're on develop branch: git checkout develop
-2. Pull latest changes: git pull origin develop
-3. Create new bugfix branch: git checkout -b bugfix/{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER]_[brief-description]
-4. Now proceed with the crash fix implementation
-
-Note: Replace [ISSUE-NUMBER] with the actual Jira issue number created above
-      Replace [brief-description] with a short kebab-case description (e.g., fix-crash-on-viewbinding)
-```
-
-**Commit Message Convention**:
-```
-All commits in this branch MUST follow this format:
-
-Format: {{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] [brief description of change]
-
-Examples:
-- {{JIRA_PROJECT_KEY}}-1234 fix crash on BaseVbActivity getBinding
-- {{JIRA_PROJECT_KEY}}-1234 add null safety checks to ViewBinding
-- {{JIRA_PROJECT_KEY}}-1234 add unit tests for binding lifecycle
-
-Key points:
-- Always start with the ticket number ({{JIRA_PROJECT_KEY}}-XXXX)
-- Use lowercase for the description
-- Keep description concise and clear
-- Use present tense (fix, add, update, not fixed, added, updated)
-```
-
-**Testing Guidelines**:
-```
-Unit Test Requirements:
-
-1. **Logic/Business Classes**: REQUIRED
-   - Add comprehensive unit tests
-   - Cover all edge cases and crash scenarios
-   - Test both success and failure paths
-   - Aim for 80%+ code coverage
-
-2. **UI/View Classes**: OPTIONAL
-   - UI tests (Espresso/UI Automator) are preferred over unit tests
-   - If changes are purely UI-related (layouts, view logic), unit tests may be skipped
-   - Document why unit tests were skipped in the PR description
-   - Examples of UI/View classes:
-     * Activity classes (MainActivity, BaseActivity, etc.)
-     * Fragment classes (HomeFragment, DetailFragment, etc.)
-     * Custom View classes (CustomButton, ChartView, etc.)
-     * Adapter classes (RecyclerView.Adapter implementations)
-     * ViewHolder classes
-
-3. **Mixed Logic/UI Classes**: REQUIRED
-   - If an Activity/Fragment contains business logic, test the logic
-   - Extract testable logic to ViewModel/Presenter/UseCase when possible
-   - Add unit tests for the extracted logic classes
-
-Note: Even if unit tests are skipped for UI classes, manual testing is MANDATORY.
-Document all manual test scenarios in the PR description.
 ```
 {{/if}}
 
@@ -457,7 +378,7 @@ Description:
 **Priority**: HIGH - Fix this sprint{{#if regressed}} 🔄 PREVIOUSLY FIXED, NOW RETURNED{{/if}}
 
 **🤖 AI Agent Recommendations**:
-- **Best Agent**: Codex (for refactoring) or Gemini CLI (for performance)
+- **Best Agent**: Aider (for refactoring) or Gemini CLI (for performance)
 - **Execution Type**: Automated with periodic check-ins
 - **Expected Resolution Time**: 4-8 hours
 
@@ -473,13 +394,7 @@ Description:
 
 **Detailed Stacktrace** (from sample crash):
 ```
-IMPORTANT: Insert the ACTUAL full stacktrace from mcp_firebase_crashlytics_get_sample_crash_for_issue here.
-Do NOT leave this as a placeholder - include the complete stacktrace with file names and line numbers.
-
-The stacktrace should show:
-- Exception type and message
-- Complete call stack with file:line references
-- All frames from crash point to app entry point
+[Full stacktrace with file:line references]
 ```
 
 **Crash Context**:
@@ -500,15 +415,15 @@ The stacktrace should show:
    - **Create Pull Request** (if Bitbucket enabled):
      ```
      Use mcp_bitbucket_createDraftPullRequest:
-     - workspace: "{{BITBUCKET_WORKSPACE}}"
-     - repo_slug: "{{BITBUCKET_REPO_SLUG}}"
+     - workspace: "mid-kelola-indonesia"
+     - repo_slug: "talenta-mobile-android"
      - title: "Fix: [Issue Title] - #[Firebase Issue ID]"
      - description: Include Firebase link, Vibe task link, stacktrace, root cause, solution, and testing checklist
      - sourceBranch: "[AI-created branch name]"
-     - targetBranch: "{{BITBUCKET_TARGET_BRANCH}}"
-     - reviewers: [{{BITBUCKET_REVIEWERS}}]
+     - targetBranch: "develop"
+     - reviewers: [team-lead]
      
-     Create PR in repository: {{BITBUCKET_WORKSPACE}}/{{BITBUCKET_REPO_SLUG}}
+     Create PR in repository: mid-kelola-indonesia/talenta-mobile-android
      ```
 
 **Files to Investigate**:
@@ -539,82 +454,15 @@ Use mcp_vibe_kanban_create_task:
 **Jira Issue Creation**:
 ```
 Use mcp_atlassian_createJiraIssue:
-- cloudId: "{{JIRA_CLOUD_ID}}"
-- projectKey: "{{JIRA_PROJECT_KEY}}"
-- issueTypeName: "{{JIRA_ISSUE_TYPE}}"
+- cloudId: "jurnal.atlassian.net"
+- projectKey: "TLMN"
+- issueTypeName: "Bug"
 - summary: [Title from template above]
 - description: [Complete description from template above - in Markdown format]
 - additional_fields: {
     "priority": { "name": "High" },  // For HIGH issues
     "labels": ["crashlytics", "high-priority", "ai-ready"]
   }
-```
-
-**Before Starting Work - Create Bugfix Branch**:
-```
-IMPORTANT: Before executing this ticket, create a new branch following the bugfix naming convention:
-
-Branch naming format: bugfix/{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER]_[brief-description]
-Source branch: develop
-
-Example: bugfix/{{JIRA_PROJECT_KEY}}-1235_fix-regressed-error
-
-Steps:
-1. Ensure you're on develop branch: git checkout develop
-2. Pull latest changes: git pull origin develop
-3. Create new bugfix branch: git checkout -b bugfix/{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER]_[brief-description]
-4. Now proceed with the crash fix implementation
-
-Note: Replace [ISSUE-NUMBER] with the actual Jira issue number created above
-      Replace [brief-description] with a short kebab-case description
-```
-
-**Commit Message Convention**:
-```
-All commits in this branch MUST follow this format:
-
-Format: {{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] [brief description of change]
-
-Examples:
-- {{JIRA_PROJECT_KEY}}-1235 fix regressed crash on lifecycle
-- {{JIRA_PROJECT_KEY}}-1235 add defensive coding for edge cases
-- {{JIRA_PROJECT_KEY}}-1235 add regression tests
-
-Key points:
-- Always start with the ticket number ({{JIRA_PROJECT_KEY}}-XXXX)
-- Use lowercase for the description
-- Keep description concise and clear
-- Use present tense (fix, add, update, not fixed, added, updated)
-```
-
-**Testing Guidelines**:
-```
-Unit Test Requirements:
-
-1. **Logic/Business Classes**: REQUIRED
-   - Add comprehensive unit tests
-   - Cover all edge cases and crash scenarios
-   - Test both success and failure paths
-   - Aim for 80%+ code coverage
-
-2. **UI/View Classes**: OPTIONAL
-   - UI tests (Espresso/UI Automator) are preferred over unit tests
-   - If changes are purely UI-related (layouts, view logic), unit tests may be skipped
-   - Document why unit tests were skipped in the PR description
-   - Examples of UI/View classes:
-     * Activity classes (MainActivity, BaseActivity, etc.)
-     * Fragment classes (HomeFragment, DetailFragment, etc.)
-     * Custom View classes (CustomButton, ChartView, etc.)
-     * Adapter classes (RecyclerView.Adapter implementations)
-     * ViewHolder classes
-
-3. **Mixed Logic/UI Classes**: REQUIRED
-   - If an Activity/Fragment contains business logic, test the logic
-   - Extract testable logic to ViewModel/Presenter/UseCase when possible
-   - Add unit tests for the extracted logic classes
-
-Note: Even if unit tests are skipped for UI classes, manual testing is MANDATORY.
-Document all manual test scenarios in the PR description.
 ```
 {{/if}}
 
@@ -648,14 +496,7 @@ Description:
 
 **Stacktrace/ANR Trace** (from sample crash):
 ```
-IMPORTANT: Insert the ACTUAL full stacktrace/trace from mcp_firebase_crashlytics_get_sample_crash_for_issue here.
-Do NOT leave this as a placeholder - include the complete trace showing the performance bottleneck.
-
-The trace should show:
-- Exception/ANR type and message
-- Complete call stack with file:line references
-- Thread information (main thread, background threads)
-- All frames showing where the bottleneck occurs
+[Full trace showing performance bottleneck]
 ```
 
 **Root Cause Analysis**:
@@ -687,15 +528,15 @@ The trace should show:
    - **Create Pull Request** (if Bitbucket enabled):
      ```
      Use mcp_bitbucket_createDraftPullRequest:
-     - workspace: "{{BITBUCKET_WORKSPACE}}"
-     - repo_slug: "{{BITBUCKET_REPO_SLUG}}"
+     - workspace: "mid-kelola-indonesia"
+     - repo_slug: "talenta-mobile-android"
      - title: "Perf: [Issue Title] - #[Firebase Issue ID]"
      - description: Include Firebase link, Vibe task link, performance analysis, optimization approach, and benchmarks
      - sourceBranch: "[AI-created branch name]"
-     - targetBranch: "{{BITBUCKET_TARGET_BRANCH}}"
-     - reviewers: [{{BITBUCKET_REVIEWERS}}]
+     - targetBranch: "develop"
+     - reviewers: [team-lead]
      
-     Create PR in repository: {{BITBUCKET_WORKSPACE}}/{{BITBUCKET_REPO_SLUG}}
+     Create PR in repository: mid-kelola-indonesia/talenta-mobile-android
      ```
 
 **Files to Investigate**:
@@ -728,8 +569,8 @@ Use mcp_vibe_kanban_create_task:
 **Jira Issue Creation**:
 ```
 Use mcp_atlassian_createJiraIssue:
-- cloudId: "{{JIRA_CLOUD_ID}}"
-- projectKey: "{{JIRA_PROJECT_KEY}}"
+- cloudId: "jurnal.atlassian.net"
+- projectKey: "TLMN"
 - issueTypeName: "Task"  // Performance tasks can be "Task" type
 - summary: [Title from template above]
 - description: [Complete description from template above - in Markdown format]
@@ -738,71 +579,9 @@ Use mcp_atlassian_createJiraIssue:
     "labels": ["crashlytics", "performance", "optimization", "ai-ready"]
   }
 ```
-
-**Before Starting Work - Create Performance Branch**:
-```
-IMPORTANT: Before executing this ticket, create a new branch:
-
-Branch naming format: performance/{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER]_[brief-description]
-Source branch: develop
-
-Example: performance/{{JIRA_PROJECT_KEY}}-1236_optimize-anr-issue
-
-Steps:
-1. Ensure you're on develop branch: git checkout develop
-2. Pull latest changes: git pull origin develop
-3. Create new performance branch: git checkout -b performance/{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER]_[brief-description]
-4. Now proceed with the performance optimization implementation
-
-Note: Replace [ISSUE-NUMBER] with the actual Jira issue number created above
-      Replace [brief-description] with a short kebab-case description
-```
-
-**Commit Message Convention**:
-```
-All commits in this branch MUST follow this format:
-
-Format: {{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] [brief description of change]
-
-Examples:
-- {{JIRA_PROJECT_KEY}}-1236 optimize memory allocation in main thread
-- {{JIRA_PROJECT_KEY}}-1236 add async processing for heavy operations
-- {{JIRA_PROJECT_KEY}}-1236 add performance benchmarks
-
-Key points:
-- Always start with the ticket number ({{JIRA_PROJECT_KEY}}-XXXX)
-- Use lowercase for the description
-- Keep description concise and clear
-- Use present tense (optimize, add, update, not optimized, added, updated)
-```
-
-**Testing Guidelines**:
-```
-Performance Test Requirements:
-
-1. **Logic/Business Classes**: REQUIRED
-   - Add unit tests for optimized code paths
-   - Add performance benchmarks if applicable
-   - Cover edge cases and stress scenarios
-   - Verify optimization doesn't break functionality
-
-2. **UI/View Classes**: OPTIONAL
-   - UI performance tests (frame rate, jank metrics) are preferred
-   - If changes are purely UI rendering optimizations, unit tests may be skipped
-   - Profile with Android Profiler to verify improvements
-   - Document performance metrics (before/after) in PR description
-
-3. **Critical Performance Paths**: REQUIRED
-   - Add benchmark tests for performance-critical code
-   - Measure and document execution time improvements
-   - Test on low-end devices if optimization targets device performance
-
-Note: Always include performance metrics (memory, CPU, execution time) in the PR description.
-Manual performance testing is MANDATORY - use Android Profiler or similar tools.
-```
 {{/if}}
 
-### STEP 6: CREATE SPECIFIC TASKS FOR COMMON {{PLATFORM}} ISSUES (AI-Optimized)
+### STEP 6: CREATE SPECIFIC TASKS FOR COMMON android ISSUES (AI-Optimized)
 
 {{#if (eq PLATFORM "android")}}
 #### A. ViewBinding/Fragment Lifecycle Issues (Claude Code Recommended):
@@ -811,7 +590,7 @@ Manual performance testing is MANDATORY - use Android Profiler or similar tools.
 - Cover fragment transaction edge cases
 - **AI Capability**: Excellent for complex lifecycle analysis and defensive coding
 
-#### B. Activity Lifecycle Management (Codex Recommended):
+#### B. Activity Lifecycle Management (Aider Recommended):
 - Activity state restoration issues
 - Configuration change handling
 - Background/foreground transitions
@@ -831,7 +610,7 @@ Manual performance testing is MANDATORY - use Android Profiler or similar tools.
 - Navigation controller issues
 - **AI Capability**: Excellent for complex iOS lifecycle analysis
 
-#### B. Auto Layout and UI Issues (Codex Recommended):
+#### B. Auto Layout and UI Issues (Aider Recommended):
 - Constraint conflicts and ambiguous layouts
 - Dynamic type and accessibility
 - Safe area handling
@@ -851,7 +630,7 @@ Manual performance testing is MANDATORY - use Android Profiler or similar tools.
 - Widget lifecycle management
 - **AI Capability**: Excellent for complex Flutter architecture analysis
 
-#### B. Platform Integration Issues (Codex Recommended):
+#### B. Platform Integration Issues (Aider Recommended):
 - Native platform channel errors
 - Plugin compatibility problems
 - Platform-specific implementations
@@ -870,7 +649,7 @@ Manual performance testing is MANDATORY - use Android Profiler or similar tools.
 - Memory leak prevention
 - **AI Capability**: Performance profiling and algorithmic improvements
 
-#### Memory and Resource Issues (Codex + Claude Code):
+#### Memory and Resource Issues (Aider + Claude Code):
 - OutOfMemoryError prevention
 - Resource leak detection
 - Memory allocation optimization
@@ -945,7 +724,7 @@ Description:
 After creating all tasks, provide:
 
 ```
-## 🎯 FIREBASE TO {{KANBAN_SYSTEM}} AUTOMATION SUMMARY
+## 🎯 FIREBASE TO jira AUTOMATION SUMMARY
 
 ### 📊 Tasks Created: [X] total tasks
 
@@ -963,7 +742,7 @@ After creating all tasks, provide:
 
 ### 🚨 IMMEDIATE ACTION REQUIRED:
 1. **This Week**: [Critical tasks requiring immediate attention - ready for Claude Code execution]
-2. **This Sprint**: [High priority tasks for current sprint - ready for Codex/Gemini execution]
+2. **This Sprint**: [High priority tasks for current sprint - ready for Aider/Gemini execution]
 3. **Next Sprint**: [Medium priority and performance tasks - ready for automated AI optimization]
 
 ### 🎯 TOP 3 MOST CRITICAL ISSUES:
@@ -981,7 +760,7 @@ After creating all tasks, provide:
 ### 🤖 AI AGENT EXECUTION GUIDE:
 - **Critical Issues**: Claude Code (complex analysis) → Immediate execution
 - **Performance Issues**: Gemini CLI (optimization specialist) → Automated benchmarking
-- **File Editing**: Codex (refactoring expert) → Bulk code improvements
+- **File Editing**: Aider (refactoring expert) → Bulk code improvements
 - **Testing Tasks**: Amp (collaborative debugging) → Comprehensive test suites
 
 ### 🔗 FIREBASE CONSOLE ACCESS:
@@ -992,29 +771,29 @@ After creating all tasks, provide:
 ```
 
 ## ⚡ EXECUTION PARAMETERS
-- **Task Management System**: {{KANBAN_SYSTEM}}
+- **Task Management System**: jira
 {{#if (eq KANBAN_SYSTEM "vibe")}}
-- **Target Project**: {{KANBAN_PROJECT_NAME}} (Vibe Kanban)
+- **Target Project**: talenta-mobile-android (Vibe Kanban)
 {{/if}}
 {{#if (eq KANBAN_SYSTEM "jira")}}
-- **Jira Cloud ID**: {{JIRA_CLOUD_ID}}
-- **Jira Project Key**: {{JIRA_PROJECT_KEY}}
-- **Default Issue Type**: {{JIRA_ISSUE_TYPE}}
+- **Jira Cloud ID**: jurnal.atlassian.net
+- **Jira Project Key**: TLMN
+- **Default Issue Type**: Bug
 {{/if}}
-- **Firebase Project**: {{FIREBASE_PROJECT_ID}}
-- **Firebase Environment**: {{FIREBASE_ENVIRONMENT}}
-- **Firebase Config**: {{FIREBASE_CONFIG_FILE}}
-- **App ID**: {{APP_ID}}
-- **Platform**: {{PLATFORM}}
-- **Bitbucket Integration**: {{BITBUCKET_ENABLED}}
-- **Bitbucket Workspace**: {{BITBUCKET_WORKSPACE}}
-- **Bitbucket Repository**: {{BITBUCKET_REPO_SLUG}}
-- **Target Branch**: {{BITBUCKET_TARGET_BRANCH}}
+- **Firebase Project**: talenta-production
+- **Firebase Environment**: default
+- **Firebase Config**: auto-detected
+- **App ID**: 1:342657588726:android:8b101aa1e055fba4
+- **Platform**: android
+- **Bitbucket Integration**: enabled
+- **Bitbucket Workspace**: mid-kelola-indonesia
+- **Bitbucket Repository**: talenta-mobile-android
+- **Target Branch**: develop
 - **Date Range**: ~8-day reporting period (tool limitation - for 30-day analysis use Console links)
 - **Crash Types**: Both FATAL and NON-FATAL issues
 - **Task Limit**: 15-25 tasks (focus on highest impact issues, API max 100 issues per call)
 - **Priority Focus**: Critical and High priority issues first
-- **🤖 AI Execution**: All tasks optimized for Claude Code, Codex, Gemini CLI, and Amp agents
+- **🤖 AI Execution**: All tasks optimized for Claude Code, Aider, Gemini CLI, and Amp agents
 - **Automation Level**: Immediate AI execution for Critical/High, automated monitoring for Medium/Low
 
 ## ✅ SUCCESS CRITERIA
@@ -1024,7 +803,7 @@ After creating all tasks, provide:
   - [ ] `mcp_firebase_crashlytics_get_issue_details` for comprehensive issue data
   - [ ] `mcp_firebase_crashlytics_get_sample_crash_for_issue` for full stacktraces
 - [ ] **Phase C**: Fresh issues identified by comparing firstSeenVersion with current version
-- [ ] All issues >{{MEDIUM_CRASHES}} events have corresponding tasks
+- [ ] All issues >100 events have corresponding tasks
 - [ ] Tasks contain complete technical details including:
   - [ ] Full stacktraces with file:line references
   - [ ] Affected devices and OS version distributions
@@ -1069,12 +848,12 @@ After creating all tasks, provide:
 {{/if}}
 5. **Create pull requests** (if Bitbucket enabled) using `mcp_bitbucket_createDraftPullRequest` after AI fixes
 
-Handle any authentication or configuration issues, and create comprehensive, AI-executable tasks for the {{PROJECT_NAME}} {{PLATFORM}} development team. Focus on overall app stability and user experience improvements through intelligent automation with detailed crash insights.
+Handle any authentication or configuration issues, and create comprehensive, AI-executable tasks for the talenta-mobile-android android development team. Focus on overall app stability and user experience improvements through intelligent automation with detailed crash insights.
 
 {{#if (eq KANBAN_SYSTEM "vibe")}}
 **🤖 POST-EXECUTION (Vibe Kanban)**: Once tasks are created, they can be immediately executed by AI agents:
 1. Open Vibe Kanban
-2. Navigate to "{{KANBAN_PROJECT_NAME}}" project
+2. Navigate to "talenta-mobile-android" project
 3. Click "Start" on any critical task for AI execution
 4. Monitor real-time AI agent progress and generated fixes
 5. Review AI-generated draft pull requests in Bitbucket (if enabled)
@@ -1083,8 +862,8 @@ Handle any authentication or configuration issues, and create comprehensive, AI-
 
 {{#if (eq KANBAN_SYSTEM "jira")}}
 **🤖 POST-EXECUTION (Jira)**: Once issues are created:
-1. Open Jira at {{JIRA_CLOUD_ID}}
-2. Navigate to project "{{JIRA_PROJECT_KEY}}"
+1. Open Jira at jurnal.atlassian.net
+2. Navigate to project "TLMN"
 3. Review created issues with complete crash context
 4. Assign issues to team members as needed
 5. Issues contain all necessary details for AI-assisted resolution
@@ -1095,7 +874,7 @@ Handle any authentication or configuration issues, and create comprehensive, AI-
 
 ### STEP 7: CREATE PULL REQUEST (Bitbucket Integration)
 
-**Status**: {{BITBUCKET_ENABLED}}
+**Status**: enabled
 
 After AI agent completes the crash fix, create a pull request for team review:
 
@@ -1103,30 +882,15 @@ After AI agent completes the crash fix, create a pull request for team review:
 Use mcp_bitbucket_createDraftPullRequest:
 
 Parameters:
-- workspace: "{{BITBUCKET_WORKSPACE}}"
-- repo_slug: "{{BITBUCKET_REPO_SLUG}}"
-{{#if (eq KANBAN_SYSTEM "jira")}}
-- title: "{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] Fix: [Crash Title]"
-{{else}}
+- workspace: "mid-kelola-indonesia"
+- repo_slug: "talenta-mobile-android"
 - title: "Fix: [Crash Title] - Issue #[Firebase Issue ID]"
-{{/if}}
 - description: """
 ## 🔥 Crash Fix: [Issue Title]
 
-{{#if (eq KANBAN_SYSTEM "jira")}}
-### 🎫 Related Ticket
-- **Jira**: {{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER]
-- **Branch**: bugfix/{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER]_[brief-description]
-{{/if}}
-
 ### 📊 Crash Context
 - **Firebase Issue**: [Firebase Console Link]
-{{#if (eq KANBAN_SYSTEM "vibe")}}
 - **Vibe Task**: [Vibe Kanban Task Link]
-{{/if}}
-{{#if (eq KANBAN_SYSTEM "jira")}}
-- **Jira Ticket**: [Jira Ticket Link]
-{{/if}}
 - **Crash Type**: FATAL / NON-FATAL
 - **Impact**: [X] crashes affecting [Y] users ([Z]% crash-free rate)
 - **Affected Versions**: [Version range]
@@ -1144,33 +908,15 @@ Parameters:
 [Detailed description of the fix approach]
 
 ### 🧪 Testing Performed
-- [ ] Unit tests added/updated: [Test file paths] OR "N/A - UI/View class changes only"
-- [ ] Manual testing completed: [Test scenarios] - MANDATORY
+- [ ] Unit tests added/updated: [Test file paths]
+- [ ] Manual testing completed: [Test scenarios]
 - [ ] Regression testing: [Scope covered]
 - [ ] Performance impact: [Memory/CPU measurements]
 - [ ] Crash reproduction verified: [Steps tested]
 
-{{#if (eq KANBAN_SYSTEM "jira")}}
-**Unit Test Exclusion Note** (if applicable):
-If unit tests were skipped because changes are in UI/View classes (Activity, Fragment, Adapter, ViewHolder, Custom Views):
-- [ ] Changes are purely UI/View-related
-- [ ] Manual testing documented above covers all scenarios
-- [ ] UI/Espresso tests added (if applicable)
-{{/if}}
-
 ### 📈 Expected Impact
 - Target crash-free percentage: >99.5%
 - Resolution confidence: [High/Medium based on testing]
-
-{{#if (eq KANBAN_SYSTEM "jira")}}
-### 📝 Commit Convention
-All commits follow the format: `{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] [description]`
-
-Example commits in this PR:
-- {{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] fix crash on [component]
-- {{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] add null safety checks
-- {{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER] add unit tests (if applicable)
-{{/if}}
 
 ### 🤖 AI Agent Information
 - **Generated by**: [Claude Code / Copilot / Gemini / Codex]
@@ -1180,32 +926,24 @@ Example commits in this PR:
 ---
 **⚠️ AI-Generated Fix**: Please review thoroughly before merging.
 """
-{{#if (eq KANBAN_SYSTEM "jira")}}
-- sourceBranch: "bugfix/{{JIRA_PROJECT_KEY}}-[ISSUE-NUMBER]_[brief-description]"
-{{else}}
 - sourceBranch: "[AI-created branch name, e.g., fix/crash-issue-123]"
-{{/if}}
-- targetBranch: "{{BITBUCKET_TARGET_BRANCH}}"
-- reviewers: [{{BITBUCKET_REVIEWERS}}]
+- targetBranch: "develop"
+- reviewers: ["team-lead"]
 
 Expected Result:
 - Draft PR created in Bitbucket
 - Team notified for review
-{{#if (eq KANBAN_SYSTEM "jira")}}
-- PR title includes Jira ticket number
-- Branch follows bugfix naming convention
-{{/if}}
-- PR linked to both Firebase issue and task management system
+- PR linked to both Firebase issue and Vibe task
 - Testing checklist ready for verification
 ```
 
-**Note**: Creating as draft PR allows team to review AI-generated fixes before merging to {{BITBUCKET_TARGET_BRANCH}}.
+**Note**: Creating as draft PR allows team to review AI-generated fixes before merging to develop.
 
 **To publish draft PR after review**:
 ```
 Use mcp_bitbucket_publishDraftPullRequest:
-- workspace: "{{BITBUCKET_WORKSPACE}}"
-- repo_slug: "{{BITBUCKET_REPO_SLUG}}"
+- workspace: "mid-kelola-indonesia"
+- repo_slug: "talenta-mobile-android"
 - pull_request_id: [PR ID from creation response]
 ```
 
