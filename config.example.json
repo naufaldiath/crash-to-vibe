@@ -16,7 +16,8 @@
   "jira": {
     "cloudId": "your-atlassian-cloud-id",
     "projectKey": "PROJ",
-    "issueType": "Bug"
+    "issueType": "Bug",
+    "labels": "crash-to-vibe"
   },
   "bitbucket": {
     "workspace": "your-workspace",

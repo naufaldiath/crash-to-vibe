@@ -12,6 +12,7 @@ A powerful CLI tool that automatically generates AI-optimized workflows for conv
 - **🤖 AI CLI Execution**: Direct integration with Claude Code, Copilot, Gemini, and Codex
 - **🔥 Firebase CLI Integration**: Automatically fetches project and app information
 - **⚙️ Customizable Thresholds**: Configure crash/user thresholds for priority classification
+- **🏷️ Jira Labels Support**: Configure default labels for Jira tickets (default: `crash-to-vibe`)
 - **📋 Comprehensive Tasks**: Creates detailed Kanban tasks with acceptance criteria
 - **🚀 Multiple Execution Modes**: Generate-only or auto-execute with AI CLI
 

@@ -374,7 +374,7 @@ Use mcp_atlassian_createJiraIssue:
 - description: [Complete description from template above - in Markdown format]
 - additional_fields: {
     "priority": { "name": "Highest" },  // For CRITICAL issues
-    "labels": ["crashlytics", "critical", "ai-ready"]
+    "labels": ["{{JIRA_LABELS}}", "crashlytics", "critical", "ai-ready"]
   }
 
 Optional: Assign to team member
@@ -550,7 +550,7 @@ Use mcp_atlassian_createJiraIssue:
 - description: [Complete description from template above - in Markdown format]
 - additional_fields: {
     "priority": { "name": "High" },  // For HIGH issues
-    "labels": ["crashlytics", "high-priority", "ai-ready"]
+    "labels": ["{{JIRA_LABELS}}", "crashlytics", "high-priority", "ai-ready"]
   }
 ```
 
@@ -743,7 +743,7 @@ Use mcp_atlassian_createJiraIssue:
 - description: [Complete description from template above - in Markdown format]
 - additional_fields: {
     "priority": { "name": "Medium" },  // For PERFORMANCE issues
-    "labels": ["crashlytics", "performance", "optimization", "ai-ready"]
+    "labels": ["{{JIRA_LABELS}}", "crashlytics", "performance", "optimization", "ai-ready"]
   }
 ```
 
@@ -1008,6 +1008,7 @@ After creating all tasks, provide:
 - **Jira Cloud ID**: {{JIRA_CLOUD_ID}}
 - **Jira Project Key**: {{JIRA_PROJECT_KEY}}
 - **Default Issue Type**: {{JIRA_ISSUE_TYPE}}
+- **Default Labels**: {{JIRA_LABELS}}
 {{/if}}
 - **Firebase Project**: {{FIREBASE_PROJECT_ID}}
 - **Firebase Environment**: {{FIREBASE_ENVIRONMENT}}

@@ -578,6 +578,11 @@ Supported AI CLIs:
         'Bug'
       );
 
+      this.config.jira.labels = await this.promptUser(
+        'Default Jira labels (comma-separated)',
+        'crash-to-vibe'
+      );
+
       console.log('✅ Jira configuration completed');
     } else {
       console.log('🎯 Using Vibe Kanban system');
@@ -833,6 +838,7 @@ Supported AI CLIs:
       '{{JIRA_CLOUD_ID}}': this.config.jira?.cloudId || 'your-atlassian-cloud-id',
       '{{JIRA_PROJECT_KEY}}': this.config.jira?.projectKey || 'PROJ',
       '{{JIRA_ISSUE_TYPE}}': this.config.jira?.issueType || 'Bug',
+      '{{JIRA_LABELS}}': this.config.jira?.labels || 'crash-to-vibe',
       '{{CRITICAL_CRASHES}}': this.config.thresholds.critical.crashes,
       '{{HIGH_CRASHES}}': this.config.thresholds.high.crashes,
       '{{MEDIUM_CRASHES}}': this.config.thresholds.medium.crashes,
