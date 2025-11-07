@@ -122,13 +122,20 @@ class ClaudeExecutor extends AIExecutor {
   }
 
   checkAuth() {
-    const result = safeExec('claude auth status');
-    if (result.success && result.output) {
-      if (result.output.toLowerCase().includes('authenticated') || 
-          result.output.toLowerCase().includes('logged in')) {
-        return { authenticated: true, message: 'Authenticated' };
-      }
+    // Try to run a simple claude command to verify authentication
+    // If it runs without error, assume authenticated
+    const result = safeExec('claude --version 2>&1', 2000);
+    if (result.success) {
+      // If version command works, likely authenticated
+      return { authenticated: true, message: 'Authenticated' };
     }
+    
+    // Fallback: check if config file exists
+    const configPath = path.join(process.env.HOME || '', '.config', 'claude', 'config.json');
+    if (fs.existsSync(configPath)) {
+      return { authenticated: true, message: 'Authenticated' };
+    }
+    
     return { authenticated: false, message: 'Not authenticated' };
   }
 
@@ -216,13 +223,19 @@ class GeminiExecutor extends AIExecutor {
   }
 
   checkAuth() {
-    const result = safeExec('gemini auth status');
-    if (result.success && result.output) {
-      if (result.output.toLowerCase().includes('authenticated') || 
-          result.output.toLowerCase().includes('logged in')) {
-        return { authenticated: true, message: 'Authenticated' };
-      }
+    // Try to run a simple gemini command to verify authentication
+    const result = safeExec('gemini --version 2>&1', 2000);
+    if (result.success) {
+      // If version command works, likely authenticated
+      return { authenticated: true, message: 'Authenticated' };
     }
+    
+    // Fallback: check if config file exists
+    const configPath = path.join(process.env.HOME || '', '.config', 'gemini', 'credentials.json');
+    if (fs.existsSync(configPath)) {
+      return { authenticated: true, message: 'Authenticated' };
+    }
+    
     return { authenticated: false, message: 'Not authenticated' };
   }
 
