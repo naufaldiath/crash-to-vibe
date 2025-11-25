@@ -374,7 +374,7 @@ Use mcp_atlassian_createJiraIssue:
 - description: [Complete description from template above - in Markdown format]
 - additional_fields: {
     "priority": { "name": "Highest" },  // For CRITICAL issues
-    "labels": ["{{JIRA_LABELS}}", "crashlytics", "critical", "ai-ready"]
+    "labels": ["crash-to-vibe", "crashlytics"]
   }
 
 Optional: Assign to team member
@@ -550,7 +550,7 @@ Use mcp_atlassian_createJiraIssue:
 - description: [Complete description from template above - in Markdown format]
 - additional_fields: {
     "priority": { "name": "High" },  // For HIGH issues
-    "labels": ["{{JIRA_LABELS}}", "crashlytics", "high-priority", "ai-ready"]
+    "labels": ["crash-to-vibe", "{{JIRA_LABELS}}", "crashlytics", "high-priority", "ai-ready"]
   }
 ```
 
@@ -743,7 +743,7 @@ Use mcp_atlassian_createJiraIssue:
 - description: [Complete description from template above - in Markdown format]
 - additional_fields: {
     "priority": { "name": "Medium" },  // For PERFORMANCE issues
-    "labels": ["{{JIRA_LABELS}}", "crashlytics", "performance", "optimization", "ai-ready"]
+    "labels": ["crash-to-vibe", "{{JIRA_LABELS}}", "crashlytics", "performance", "optimization", "ai-ready"]
   }
 ```
 

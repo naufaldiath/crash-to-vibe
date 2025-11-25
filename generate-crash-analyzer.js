@@ -43,7 +43,9 @@ class CrashAnalyzerGenerator {
     const parsed = {
       generateOnly: false,
       forceCli: null,
-      help: false
+      help: false,
+      useLastConfig: false,
+      configFile: null
     };
 
     for (let i = 0; i < args.length; i++) {
@@ -54,6 +56,11 @@ class CrashAnalyzerGenerator {
         i++; // Skip next arg
       } else if (args[i] === '--help' || args[i] === '-h') {
         parsed.help = true;
+      } else if (args[i] === '--use-last-config') {
+        parsed.useLastConfig = true;
+      } else if (args[i] === '--config' && args[i + 1]) {
+        parsed.configFile = args[i + 1];
+        i++; // Skip next arg
       }
     }
 
@@ -72,13 +79,22 @@ Usage: crash-to-vibe [options]
 Options:
   --generate-only     Only generate the workflow file without executing
   --cli <name>        Execute with specific AI CLI (claude, copilot, gemini, codex)
+  --use-last-config   Use the last saved configuration (skip interactive prompts)
+  --config <file>     Use a predefined configuration file (for team sharing)
   --help, -h          Show this help message
 
 Examples:
   crash-to-vibe                      # Interactive mode with AI CLI detection
   crash-to-vibe --generate-only      # Only generate workflow file
   crash-to-vibe --cli claude         # Generate and execute with Claude Code
-  crash-to-vibe --cli codex          # Generate and execute with Codex CLI
+  crash-to-vibe --use-last-config    # Reuse last configuration
+  crash-to-vibe --config team.json   # Use team's predefined config
+  crash-to-vibe --config team.json --cli codex  # Use team config and execute
+
+Team Configuration:
+  You can create a team configuration file (e.g., team-config.json) based on
+  config.example.json and share it with your team. Team members can then use
+  --config <file> to apply the same settings without interactive prompts.
 
 Supported Task Management Systems:
   - Vibe Kanban (via MCP)
@@ -887,6 +903,114 @@ Supported AI CLIs:
     console.log(`💾 Configuration saved to: ${configPath}`);
   }
 
+  loadLastConfig() {
+    // Try to load from global location first, then local
+    const isGlobalInstall = __dirname.includes('node_modules');
+    const globalConfigPath = path.join(require('os').homedir(), '.crash-analyzer-config.json');
+    const localConfigPath = path.join(__dirname, 'last-config.json');
+    
+    const configPath = isGlobalInstall && fs.existsSync(globalConfigPath)
+      ? globalConfigPath
+      : fs.existsSync(localConfigPath)
+        ? localConfigPath
+        : null;
+
+    if (!configPath) {
+      throw new Error('No saved configuration found. Run without --use-last-config first.');
+    }
+
+    try {
+      const savedConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      console.log(`✅ Loaded configuration from: ${configPath}`);
+      console.log(`📋 Project: ${savedConfig.project.name} (${savedConfig.project.platform})`);
+      console.log(`🔥 Firebase: ${savedConfig.firebase.projectId}`);
+      console.log(`🎯 Task System: ${savedConfig.kanban.system}`);
+      
+      // Merge with current config to preserve defaults and structure
+      this.config = {
+        ...this.config,
+        ...savedConfig,
+        // Preserve execution mode from CLI args if provided
+        execution: this.cliArgs.forceCli
+          ? { mode: 'cli', cli: this.cliArgs.forceCli }
+          : this.cliArgs.generateOnly
+            ? { mode: 'generate-only', cli: null }
+            : savedConfig.execution || this.config.execution
+      };
+      
+      return true;
+    } catch (error) {
+      throw new Error(`Failed to load configuration: ${error.message}`);
+    }
+  }
+
+  loadPredefinedConfig(configFilePath) {
+    // Resolve config file path (support relative and absolute paths)
+    const resolvedPath = path.isAbsolute(configFilePath)
+      ? configFilePath
+      : path.join(process.cwd(), configFilePath);
+
+    if (!fs.existsSync(resolvedPath)) {
+      throw new Error(`Configuration file not found: ${resolvedPath}`);
+    }
+
+    try {
+      const predefinedConfig = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
+      
+      // Validate required fields
+      const requiredFields = [
+        'project.name',
+        'project.platform',
+        'firebase.projectId',
+        'firebase.appId',
+        'kanban.system'
+      ];
+      
+      for (const field of requiredFields) {
+        const keys = field.split('.');
+        let value = predefinedConfig;
+        for (const key of keys) {
+          value = value?.[key];
+        }
+        if (!value) {
+          throw new Error(`Missing required field in config file: ${field}`);
+        }
+      }
+
+      console.log(`✅ Loaded predefined configuration from: ${resolvedPath}`);
+      console.log(`📋 Project: ${predefinedConfig.project.name} (${predefinedConfig.project.platform})`);
+      console.log(`🔥 Firebase: ${predefinedConfig.firebase.projectId}`);
+      console.log(`🎯 Task System: ${predefinedConfig.kanban.system}`);
+      
+      if (predefinedConfig.kanban.system === 'jira' && predefinedConfig.jira) {
+        console.log(`📊 Jira Project: ${predefinedConfig.jira.projectKey}`);
+      }
+      
+      if (predefinedConfig.bitbucket?.workspace) {
+        console.log(`🔀 Bitbucket: ${predefinedConfig.bitbucket.workspace}/${predefinedConfig.bitbucket.repoSlug}`);
+      }
+      
+      // Merge with current config to preserve defaults and structure
+      this.config = {
+        ...this.config,
+        ...predefinedConfig,
+        // Preserve execution mode from CLI args if provided
+        execution: this.cliArgs.forceCli
+          ? { mode: 'cli', cli: this.cliArgs.forceCli }
+          : this.cliArgs.generateOnly
+            ? { mode: 'generate-only', cli: null }
+            : predefinedConfig.execution || this.config.execution
+      };
+      
+      return true;
+    } catch (error) {
+      if (error.message.includes('Missing required field')) {
+        throw error;
+      }
+      throw new Error(`Failed to load configuration file: ${error.message}`);
+    }
+  }
+
   /**
    * Execute the workflow with selected AI CLI
    * @param {string} workflowPath - Path to the generated workflow file
@@ -964,11 +1088,37 @@ Supported AI CLIs:
         process.exit(0);
       }
 
-      // Collect configuration
-      await this.collectConfiguration();
-      
-      // Select execution mode
-      await this.selectExecutionMode();
+      // Load predefined config, last config, or collect new configuration
+      if (this.cliArgs.configFile) {
+        // Priority 1: Predefined config file (for team sharing)
+        console.log('📦 Loading predefined configuration...\n');
+        this.loadPredefinedConfig(this.cliArgs.configFile);
+        
+        // Only select execution mode if not specified via CLI flags
+        if (!this.cliArgs.forceCli && !this.cliArgs.generateOnly) {
+          await this.selectExecutionMode();
+        } else {
+          console.log(`📝 Execution mode: ${this.config.execution.mode}`);
+        }
+      } else if (this.cliArgs.useLastConfig) {
+        // Priority 2: Last saved config
+        console.log('🔄 Using last saved configuration...\n');
+        this.loadLastConfig();
+        
+        // Only select execution mode if not specified via CLI flags
+        if (!this.cliArgs.forceCli && !this.cliArgs.generateOnly) {
+          await this.selectExecutionMode();
+        } else {
+          console.log(`📝 Execution mode: ${this.config.execution.mode}`);
+        }
+      } else {
+        // Priority 3: Interactive configuration
+        // Collect configuration
+        await this.collectConfiguration();
+        
+        // Select execution mode
+        await this.selectExecutionMode();
+      }
       
       // Generate workflow
       const workflow = this.generateWorkflow();

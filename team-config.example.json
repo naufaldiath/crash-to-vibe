@@ -1,25 +1,25 @@
 {
   "project": {
-    "directory": "/Users/mekari/Documents/mekari/talenta-mobile-android",
-    "name": "talenta-mobile-android",
+    "directory": "/path/to/your-mobile-project",
+    "name": "your-mobile-app",
     "platform": "android"
   },
   "firebase": {
-    "projectId": "talenta-production",
-    "appId": "1:342657588726:android:8b101aa1e055fba4"
+    "projectId": "your-firebase-project",
+    "appId": "1:123456789:android:abcdef123456"
   },
   "kanban": {
     "system": "jira"
   },
   "jira": {
-    "cloudId": "jurnal.atlassian.net",
-    "projectKey": "TLMN",
-    "issueType": "Task",
+    "cloudId": "your-company.atlassian.net",
+    "projectKey": "PROJ",
+    "issueType": "Bug",
     "labels": "crash-to-vibe"
   },
   "bitbucket": {
-    "workspace": "mid-kelola-indonesia",
-    "repoSlug": "talenta-mobile-android",
+    "workspace": "your-workspace",
+    "repoSlug": "your-repo-slug",
     "targetBranch": "develop",
     "reviewers": []
   },
@@ -45,6 +45,6 @@
     "claude",
     "codex",
     "gemini",
-    "amp"
+    "copilot"
   ]
 }

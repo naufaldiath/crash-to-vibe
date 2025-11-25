@@ -76,6 +76,25 @@ crash-to-vibe --cli gemini
 # Execute with GitHub Copilot
 crash-to-vibe --cli copilot
 ```
+
+#### Use Last Configuration
+```bash
+# Reuse the last saved configuration (skip prompts)
+crash-to-vibe --use-last-config
+
+# Combine with other flags
+crash-to-vibe --use-last-config --cli claude
+crash-to-vibe --use-last-config --generate-only
+```
+
+#### Use Team Configuration (Recommended for Teams)
+```bash
+# Use a predefined team configuration file
+crash-to-vibe --config team-config.json
+
+# Combine with execution flags
+crash-to-vibe --config team-config.json --cli claude
+crash-to-vibe --config team-config.json --generate-only
 ```
 
 #### Show Help
@@ -261,6 +280,82 @@ After configuring MCP servers:
 | 🔶 **MEDIUM** | >100 crashes OR >50 users | Next sprint | Gemini CLI |
 | 📊 **LOW** | <100 crashes | Backlog | Setup Script |
 
+## 🤝 Team Configuration
+
+For teams working on the same project, you can create and share a predefined configuration file:
+
+### 1. Create Team Configuration
+
+Create a `team-config.json` file based on `team-config.example.json`:
+
+```json
+{
+  "project": {
+    "directory": "/path/to/talenta-mobile-android",
+    "name": "talenta-mobile-android",
+    "platform": "android"
+  },
+  "firebase": {
+    "projectId": "talenta-production",
+    "appId": "1:342657588726:android:8b101aa1e055fba4"
+  },
+  "kanban": {
+    "system": "jira"
+  },
+  "jira": {
+    "cloudId": "jurnal.atlassian.net",
+    "projectKey": "TLMN",
+    "issueType": "Task",
+    "labels": "crash-to-vibe"
+  },
+  "bitbucket": {
+    "workspace": "mid-kelola-indonesia",
+    "repoSlug": "talenta-mobile-android",
+    "targetBranch": "develop",
+    "reviewers": []
+  },
+  "thresholds": {
+    "critical": { "crashes": 800, "users": 600 },
+    "high": { "crashes": 400, "users": 300 },
+    "medium": { "crashes": 100, "users": 50 }
+  }
+}
+```
+
+### 2. Share with Team
+
+Commit the configuration file to your repository:
+
+```bash
+# Add to version control
+git add team-config.json
+git commit -m "Add crash-to-vibe team configuration"
+git push
+```
+
+### 3. Team Members Usage
+
+Team members can use the shared configuration:
+
+```bash
+# Clone the project
+git clone <your-repo>
+cd <your-project>
+
+# Use team configuration
+crash-to-vibe --config team-config.json
+
+# Or with automatic execution
+crash-to-vibe --config team-config.json --cli claude
+```
+
+### Benefits
+
+✅ **Consistent Configuration**: Everyone uses the same Firebase project, Jira project, and thresholds  
+✅ **No Manual Setup**: Skip interactive prompts  
+✅ **Version Controlled**: Track configuration changes  
+✅ **Onboarding**: New team members get started instantly  
+
 ## 📱 Platform Support
 
 | Platform | Config File | Auto-Detection |
@@ -341,9 +436,12 @@ cat crashAnalyzer.execution.log
 | File | Description |
 |------|-------------|
 | `crashAnalyzer.md` | Generated workflow file |
-| `crashAnalyzer.execution.log` | AI CLI execution log |
+| `crashAnalyzer.execution.log` | AI CLI execution log (when using --cli) |
 | `~/.crash-analyzer-config.json` | Saved configuration (global install) |
 | `last-config.json` | Saved configuration (local run) |
+| `team-config.json` | Team shared configuration (optional) |
+
+**Note**: The `project.directory` field in config files is ignored when using `--config`. The tool will use your current working directory instead, making the config portable across team members' machines.
 
 ## �️ Uninstallation
 
