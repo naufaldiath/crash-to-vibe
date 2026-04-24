@@ -71,7 +71,8 @@ npm link
 crash-to-vibe [options]
 
 Zero-config global mode:
-  --zero-config       Install global skill to ~/.agents/skills/ (no baked-in config)
+  --zero-config       Install global skill to all CLI skill dirs: ~/.claude/skills/,
+                      ~/.gemini/skills/, ~/.agents/skills/ (no baked-in config)
   --init-project      Create crash-to-vibe.json in current directory
 
 Per-project mode:

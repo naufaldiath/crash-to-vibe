@@ -17,6 +17,7 @@ Zero-config skill — no baked-in values. Discovers everything at runtime.
 - Firebase MCP server connected and authenticated (`firebase login`)
 - Atlassian MCP server connected
 - `crash-to-vibe.json` in the project root (run `crash-to-vibe --init-project` to create)
+- This skill installed globally via `crash-to-vibe --zero-config` (writes to `~/.claude/skills/`, `~/.gemini/skills/`, `~/.agents/skills/`)
 
 ---
 

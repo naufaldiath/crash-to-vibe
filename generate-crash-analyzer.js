@@ -93,7 +93,8 @@ class CrashAnalyzerGenerator {
 Usage: crash-to-vibe [options]
 
 Zero-config global mode (install once, use everywhere):
-  --zero-config       Install global skill to ~/.agents/skills/ — no baked-in config,
+  --zero-config       Install global skill to all CLI skill dirs (~/.claude/skills/,
+                      ~/.gemini/skills/, ~/.agents/skills/) — no baked-in config,
                       reads crash-to-vibe.json from your project root at runtime
   --init-project      Create crash-to-vibe.json in current directory (Jira config)
 
@@ -768,7 +769,7 @@ Firebase Crashlytics. Supports Claude Code, Gemini CLI, Codex, GitHub Copilot.
     for (const targetDir of targetDirs) {
       const skillDir = path.join(targetDir, SKILL_NAME);
 
-      if (fs.existsSync(skillDir) && !force) {
+      if (fs.existsSync(skillDir) && !force && !dryRun) {
         throw new Error(
           `Skill already installed at: ${skillDir}\nUse --force to overwrite.`
         );
@@ -808,7 +809,7 @@ Firebase Crashlytics. Supports Claude Code, Gemini CLI, Codex, GitHub Copilot.
 
     if (!dryRun) {
       if (zeroConfig) {
-        console.log(`\nGlobal zero-config skill installed.`);
+        console.log(`\nGlobal skill installed for: Claude Code, Gemini CLI, Codex, Copilot, Amp`);
         console.log(`\nNext steps:`);
         console.log(`  1. In each mobile project, run: crash-to-vibe --init-project`);
         console.log(`  2. Open Claude Code (or Gemini CLI / Copilot) in your project and say:`);
@@ -1024,15 +1025,17 @@ Firebase Crashlytics. Supports Claude Code, Gemini CLI, Codex, GitHub Copilot.
         process.exit(0);
       }
 
-      // --zero-config: install static global skill, no per-project config needed
+      // --zero-config: install static global skill to all known CLI skill dirs
       if (this.cliArgs.zeroConfig) {
         console.log('⚙️  Installing zero-config global skill...');
         const skillFiles = this.generateZeroConfigSkillFiles();
-        // Default to global install for zero-config; --global flag not required
-        const base = os.homedir();
-        const dirs = [path.join(base, '.agents', 'skills')];
-        if (this.cliArgs.alsoClaude) dirs.push(path.join(base, '.claude', 'skills'));
-        if (this.cliArgs.alsoGemini) dirs.push(path.join(base, '.gemini', 'skills'));
+        // Install to every known global skill directory so all CLIs pick it up
+        const home = os.homedir();
+        const dirs = [
+          path.join(home, '.claude', 'skills'),     // Claude Code
+          path.join(home, '.gemini', 'skills'),     // Gemini CLI
+          path.join(home, '.agents', 'skills'),     // Agent Skills standard (Copilot, Codex, Amp)
+        ];
 
         const written = this.installSkill(skillFiles, dirs, {
           force: this.cliArgs.force,
