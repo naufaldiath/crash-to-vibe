@@ -8,9 +8,6 @@
     "projectId": "your-firebase-project",
     "appId": "1:123456789:android:abcdef123456"
   },
-  "kanban": {
-    "system": "jira"
-  },
   "jira": {
     "cloudId": "your-company.atlassian.net",
     "projectKey": "PROJ",
@@ -22,10 +19,6 @@
     "repoSlug": "your-repo-slug",
     "targetBranch": "develop",
     "reviewers": []
-  },
-  "execution": {
-    "mode": "generate-only",
-    "cli": null
   },
   "thresholds": {
     "critical": {

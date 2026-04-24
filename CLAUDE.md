@@ -4,332 +4,175 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a CLI tool that generates AI-powered Firebase Crashlytics to Task Management automation workflows. The tool:
-- Auto-detects Firebase configuration files (google-services.json, GoogleService-Info.plist) recursively in projects
-- Supports Android, iOS, and Flutter projects
-- Supports multiple task management systems: **Vibe Kanban** and **Jira** (via Atlassian MCP)
-- Generates workflow markdown files optimized for AI agent execution (Claude Code, Codex, Gemini CLI, Amp)
-- Creates comprehensive crash analysis tasks with priority classification
+CLI tool that generates AI-powered Firebase Crashlytics → Task Management automation workflows. Detects Firebase config files recursively, supports Android/iOS/Flutter, and outputs a `crashAnalyzer.md` workflow file optimized for AI agent execution.
+
+Uses **Jira** (via Atlassian MCP) as the only task management system.
 
 ## Key Commands
 
-### Running the Generator
 ```bash
-# Run locally during development
-npm start
-# or
-npm run generate
-# or
-node generate-crash-analyzer.js
+# Development
+npm start                              # Run locally
+node generate-crash-analyzer.js        # Direct invocation
 
-# When installed globally (via npm link or npm install -g)
-crash-to-vibe
+# Global install for testing
+npm link                               # Create global symlink
+crash-to-vibe                          # Test globally
+npm unlink -g crash-to-vibe            # Remove symlink
 
-# Generate workflow only (no AI execution)
-crash-to-vibe --generate-only
-
-# Execute with specific AI CLI
-crash-to-vibe --cli claude
-crash-to-vibe --cli codex
-crash-to-vibe --cli gemini
-crash-to-vibe --cli copilot
-
-# Show help
+# CLI flags
+crash-to-vibe --use-last-config        # Reuse saved config, skip prompts
+crash-to-vibe --config team.json       # Load predefined team config
+crash-to-vibe --global                 # Install to ~/.agents/skills/ (all projects)
+crash-to-vibe --force                  # Overwrite existing installation
+crash-to-vibe --dry-run                # Preview files, no writes
+crash-to-vibe --also-claude            # Also install to .claude/skills/
+crash-to-vibe --also-gemini            # Also install to .gemini/skills/
 crash-to-vibe --help
-```
-
-### Global Installation for Development
-```bash
-# Create global symlink for testing
-npm link
-
-```bash
-# Test globally
-crash-to-vibe
-
-# Remove global link
-npm unlink -g crash-to-vibe
-```
-
-### Firebase CLI Integration
-The tool integrates with Firebase CLI for auto-detection:
-```bash
-# Login to Firebase (required for project listing)
-firebase login
-
-# Set active project (improves auto-detection)
-firebase use <project-id>
-
-# List available projects (used by tool internally)
-firebase projects:list
-
-# List apps for a project (used by tool internally)
-firebase apps:list --project <project-id>
 ```
 
 ## Architecture
 
-### Core Component: CrashAnalyzerGenerator Class
+Single-file tool: all logic in `generate-crash-analyzer.js` (CrashAnalyzerGenerator class). AI executor classes in `ai-executors.js` (kept for future use). Source templates in `templates/skill/`.
 
-The tool is a single-file Node.js application ([generate-crash-analyzer.js](generate-crash-analyzer.js)) built around the `CrashAnalyzerGenerator` class with these key responsibilities:
+### Output: Agent Skills directory
 
-1. **Project Detection** (`detectProjectInfo`, `findFirebaseConfigFiles`)
-   - Recursively searches for Firebase config files up to 10 levels deep
-   - Parses google-services.json (Android) and GoogleService-Info.plist (iOS)
-   - Detects platform (android/ios/flutter) based on config presence
-   - Extracts project name from package.json or pubspec.yaml
-   - Supports multiple environments (Production, Development, Staging)
+v2 generates an [Agent Skills](https://agentskills.io) directory instead of a flat `.md` file:
 
-2. **Firebase Integration** (`getFirebaseInfoFromCLI`, `listFirebaseProjects`)
-   - Queries Firebase CLI for active project and available apps
-   - Falls back to manual entry if Firebase CLI unavailable
-   - Parses Firebase CLI table output to extract project/app information
+```
+.agents/skills/crash-to-vibe/        # cross-client (default)
+~/.agents/skills/crash-to-vibe/      # --global flag
+.claude/skills/crash-to-vibe/        # --also-claude flag
+.gemini/skills/crash-to-vibe/        # --also-gemini flag
+```
 
-3. **User Interaction** (`collectConfiguration`, `promptUser`, `selectExecutionMode`)
-   - Interactive CLI prompts with intelligent defaults from auto-detection
-   - Multi-environment selection when multiple configs found
-   - App selection when multiple apps exist in Firebase project
-   - AI CLI detection and execution mode selection
+Each install writes:
+```
+crash-to-vibe/
+├── SKILL.md                          # ~220 lines: frontmatter + lean workflow
+└── references/
+    ├── task-templates.md             # CRITICAL/HIGH/PERFORMANCE task templates
+    ├── platform-patterns.md          # Android/iOS/Flutter crash patterns
+    └── pr-workflow.md               # Bitbucket PR workflow (only if bitbucket configured)
+```
 
-4. **AI CLI Integration** (`AIExecutorFactory`, AI executor classes in [ai-executors.js](ai-executors.js))
-   - Auto-detects installed AI CLIs (Claude, Copilot, Gemini, Codex)
-   - Validates authentication status for each CLI
-   - Executes workflows with selected AI CLI
-   - Logs execution output to crashAnalyzer.execution.log
+### CrashAnalyzerGenerator responsibilities
 
-5. **Workflow Generation** (`generateWorkflow`, `loadTemplate`)
-   - Uses [crashAnalyzer.template.md](crashAnalyzer.template.md) as base template
-   - Replaces placeholders like {{PROJECT_NAME}}, {{FIREBASE_PROJECT_ID}}, etc.
-   - Generates AI-optimized task templates with acceptance criteria
+1. **Project detection** (`detectProjectInfo`, `findFirebaseConfigFiles`) — recursive search up to 10 levels, skips node_modules/.git/build/Pods, parses google-services.json (JSON) and GoogleService-Info.plist (regex on XML)
 
-6. **Output Management** (`saveWorkflow`, `saveConfig`, `executeWorkflow`)
-   - Saves generated workflow to current directory as crashAnalyzer.md
-   - Saves configuration to ~/.crash-analyzer-config.json (global) or ./last-config.json (local)
-   - Executes workflow with AI CLI if requested
-   - Creates execution logs for debugging
+2. **Firebase integration** (`getFirebaseInfoFromCLI`, `listFirebaseProjects`) — queries `firebase projects:list` and `firebase apps:list`, falls back to manual entry
 
-### Template System
+3. **Configuration collection** (`collectConfiguration`) — interactive prompts with auto-detection defaults; multi-environment and multi-app selection
 
-The [crashAnalyzer.template.md](crashAnalyzer.template.md) contains:
-- Step-by-step Firebase MCP integration instructions
-- Crashlytics data fetching procedures (FATAL and NON-FATAL issues)
-- Vibe Kanban task creation templates optimized for AI agents
-- Priority classification system based on crash/user thresholds
-- Platform-specific issue guidance (Android/iOS/Flutter)
-- AI agent recommendations (Claude Code for analysis, Codex for refactoring, Gemini for performance, Amp for debugging)
+4. **Skill generation** (`generateSkillFiles`) — pure function, returns `Map<relativePath, content>`. Calls `resolveConditionals` then `resolvePlaceholders` on each template file.
 
-### Configuration Schema
+5. **Conditional resolution** (`resolveConditionals`) — processes `{{#if (eq VAR "VALUE")}}...{{/if}}` at generation time using `TEMPLATE_VAR_MAP`. Bare `{{#if signal}}` blocks (runtime signals) are left as prose in templates.
 
-Configuration follows this structure (see [config.example.json](config.example.json)):
+6. **Placeholder resolution** (`resolvePlaceholders`) — replaces `{{TOKEN}}` tokens with config values
+
+7. **Skill installation** (`installSkill`, `buildTargetDirs`) — writes skill directory to target paths; throws if exists without `--force`
+
+### Source templates
+
+`templates/skill/` — source files processed at generation time:
+
+| File | Content |
+|---|---|
+| `SKILL.md.tmpl` | Frontmatter + lean workflow (~250 lines) |
+| `references/task-templates.md.tmpl` | CRITICAL/HIGH/PERFORMANCE/MONITORING task templates |
+| `references/platform-patterns.md.tmpl` | Android/iOS/Flutter crash pattern guide |
+| `references/pr-workflow.md.tmpl` | Bitbucket PR creation + merge workflow |
+
+### Template tokens
+
+Key `{{TOKEN}}` placeholders — add to `resolvePlaceholders()` and use in template files:
+
+| Placeholder | Source |
+|---|---|
+| `{{PROJECT_NAME}}` | config.project.name |
+| `{{PLATFORM}}` | config.project.platform |
+| `{{FIREBASE_PROJECT_ID}}` | config.firebase.projectId |
+| `{{APP_ID}}` | config.firebase.appId |
+| `{{JIRA_CLOUD_ID}}` | config.jira.cloudId |
+| `{{JIRA_PROJECT_KEY}}` | config.jira.projectKey |
+| `{{JIRA_LABELS}}` | config.jira.labels (default: `crash-to-vibe`) |
+| `{{BITBUCKET_WORKSPACE}}` | config.bitbucket.workspace |
+| `{{BITBUCKET_ENABLED}}` | `'enabled'` if bitbucket.workspace set, else `'disabled'` |
+
+Config-time conditionals resolved by `resolveConditionals` (using `TEMPLATE_VAR_MAP`):
+- `{{#if (eq PLATFORM "android")}}` / `ios` / `flutter`
+- `{{#if (eq BITBUCKET_ENABLED "enabled")}}`
+
+### Configuration schema
+
 ```javascript
 {
   project: {
-    directory: string,      // Absolute path to mobile project
-    name: string,          // Display name for project
-    platform: string       // 'android', 'ios', or 'flutter'
+    directory: string,   // absolute path
+    name: string,
+    platform: string     // 'android' | 'ios' | 'flutter'
   },
   firebase: {
-    projectId: string,     // Firebase project ID
-    appId: string,        // Firebase app ID (format: 1:number:platform:hash)
-    configFile: string,   // Path to selected config file
-    environment: string   // Detected environment (Production, Development, etc.)
-  },
-  kanban: {
-    system: string,       // 'vibe' or 'jira'
-    projectName: string,  // Vibe Kanban project name (when system='vibe')
-    projectId: string     // Vibe Kanban project ID (UUID)
+    projectId: string,
+    appId: string,       // format: 1:number:platform:hash
+    configFile: string,
+    environment: string  // 'Production' | 'Development' | 'Staging' | etc.
   },
   jira: {
-    cloudId: string,      // Atlassian Cloud ID (when system='jira')
-    projectKey: string,   // Jira project key (e.g., 'PROJ')
-    issueType: string     // Default issue type ('Bug', 'Task', 'Story')
+    cloudId: string,     // e.g. 'your-company.atlassian.net'
+    projectKey: string,
+    issueType: string,   // 'Bug' | 'Task' | 'Story'
+    labels: string       // comma-separated, default: 'crash-to-vibe'
   },
-  execution: {
-    mode: string,         // 'generate-only' or 'cli'
-    cli: string          // 'claude', 'copilot', 'gemini', 'codex', or null
+  bitbucket: {
+    workspace: string,
+    repoSlug: string,
+    targetBranch: string,
+    reviewers: string[]
   },
   thresholds: {
-    critical: { crashes: number, users: number },
-    high: { crashes: number, users: number },
-    medium: { crashes: number, users: number }
+    critical: { crashes: 800, users: 600 },
+    high:     { crashes: 400, users: 300 },
+    medium:   { crashes: 100, users: 50 }
   },
   aiAgents: ['claude', 'codex', 'gemini', 'amp']
 }
 ```
 
-## Key Patterns
+### Output files
 
-### Task Management System Selection
-Users can choose between two task management systems during configuration:
-
-**Vibe Kanban**:
-- Uses `mcp_vibe_kanban` MCP server
-- Tasks are created with `mcp_vibe_kanban_create_task`
-- Supports AI agent execution for automated fixes
-- Requires project name and extracts project ID during workflow execution
-- AI agents (Claude Code, Codex, Gemini CLI, Amp) can directly execute tasks
-
-**Jira (Atlassian MCP)**:
-- Uses `mcp_atlassian` MCP server
-- Issues are created with `mcp_atlassian_createJiraIssue`
-- Requires Atlassian Cloud ID, project key, and issue type
-- Supports priority levels, labels, and assignees
-- Integrates with existing Jira workflows
-- Can link to Bitbucket PRs for seamless development workflow
-
-The template dynamically adapts based on the selected system, providing system-specific instructions using conditional logic (`{{#if (eq KANBAN_SYSTEM "vibe")}}` / `{{#if (eq KANBAN_SYSTEM "jira")}}`).
-
-### Multi-Environment Support
-When multiple Firebase configs are found:
-1. Tool lists all configs with detected environment names
-2. User selects which configuration to use
-3. Environment name extracted from path using keywords (prod, dev, staging, etc.)
-4. Selected config and environment stored in output for reference
-
-### Firebase Config Parsing
-- **Android (google-services.json)**: JSON parsing for project_id, mobilesdk_app_id, project_number
-- **iOS (GoogleService-Info.plist)**: Regex parsing XML for PROJECT_ID and GOOGLE_APP_ID keys
-- **Flutter**: Detects when both Android and iOS configs present, prompts for platform confirmation
-
-### Directory Traversal Safety
-The `findFirebaseConfigFiles` method:
-- Limits recursion to 10 levels to prevent infinite loops
-- Skips common non-config directories (node_modules, .git, build, Pods, etc.)
-- Handles permission errors gracefully with skip warnings
-- Returns arrays of all found configs for user selection
-
-### Environment Name Extraction
-The `extractEnvironmentName` method uses pattern matching:
-- Searches path segments for keywords: prod, dev, staging, test, qa, uat, demo, beta
-- Normalizes names to proper case (Production, Development, Staging, etc.)
-- Returns null if no environment detected (uses 'default')
-
-## Testing the Tool
-
-### Local Project Testing
-```bash
-cd /path/to/mobile-project
-node /path/to/crash-analyzer/generate-crash-analyzer.js
-```
-
-### Global Installation Testing
-```bash
-npm link                    # Create global symlink
-cd /path/to/mobile-project
-crash-analyzer             # Run globally
-npm unlink -g crash-to-vibe # Clean up
-```
-
-### Test Scenarios to Verify
-1. Android project with single google-services.json
-2. iOS project with single GoogleService-Info.plist
-3. Flutter project with both configs
-4. Project with multiple environments (prod/dev/staging)
-5. Project without Firebase CLI installed
-6. Project with Firebase CLI but no active project
+| File | Location | Purpose |
+|---|---|---|
+| `.agents/skills/crash-to-vibe/` | `process.cwd()` | Installed skill (default) |
+| `~/.agents/skills/crash-to-vibe/` | Home dir | Global skill install (`--global`) |
+| `~/.crash-analyzer-config.json` | Home dir | Config when globally installed |
+| `./last-config.json` | Script dir | Config when run locally |
 
 ## Common Modifications
 
-### Adding New Platform Support
-1. Update platform detection in `detectProjectInfo`
-2. Add platform-specific config parsing method
-3. Update template with platform-specific issue categories
-4. Add platform to keyword list ('android', 'ios', 'flutter')
+**New platform**: update `detectProjectInfo`, add config parse method, add section to `templates/skill/references/platform-patterns.md.tmpl`.
 
-### Customizing Task Templates
-Edit [crashAnalyzer.template.md](crashAnalyzer.template.md):
-- Modify STEP 5 for task template structure
-- Update STEP 6 for platform-specific issue templates
-- Adjust priority thresholds in STEP 4
-- Add/remove AI agent recommendations
+**New placeholder**: add to `resolvePlaceholders()` replacement map, add `{{PLACEHOLDER}}` to relevant template files, set value in `collectConfiguration`.
 
-### Changing Default Thresholds
-Update in constructor:
-```javascript
-thresholds: {
-  critical: { crashes: 800, users: 600 },
-  high: { crashes: 400, users: 300 },
-  medium: { crashes: 100, users: 50 }
-}
+**New AI CLI**: add executor class in `ai-executors.js` extending `AIExecutor`, register in `AIExecutorFactory`.
+
+**Upgrading from v1**: v1 generated `crashAnalyzer.md`; v2 generates `.agents/skills/crash-to-vibe/`. Pin to `crash-to-vibe@1.3.0` for v1 behavior.
+
+**Thresholds**: change defaults in `CrashAnalyzerGenerator` constructor.
+
+## Team Configuration
+
+Share a JSON file (see `team-config.example.json`) based on `config.example.json` with pre-filled values. Team members run:
+
+```bash
+crash-to-vibe --config team-config.json
 ```
 
-### Adding New Placeholders
-1. Add to `replacements` object in `generateWorkflow`
-2. Update template to use `{{PLACEHOLDER_NAME}}`
-3. Ensure value is set in config during `collectConfiguration`
-
-## Dependencies
-
-This is a pure Node.js tool with zero external dependencies:
-- `fs`: File system operations (config reading, workflow writing)
-- `path`: Path manipulation (cross-platform compatibility)
-- `readline`: Interactive CLI prompts
-- `child_process.execSync`: Firebase CLI integration
-- Built-in JSON/string parsing for config files
-
-## Output Files
-
-### Generated Files
-- `crashAnalyzer.md`: Main workflow file (saved to current working directory)
-- `~/.crash-analyzer-config.json`: Global config (when installed globally)
-- `last-config.json`: Local config (when run locally)
-
-### File Locations
-- **Global install**: Config saved to user home directory
-- **Local run**: Config saved to script directory
-- **Workflow**: Always saved to current working directory (process.cwd())
-
-## AI Agent Integration
-
-The generated workflow is optimized for four AI agents:
-- **Claude Code**: Complex crash analysis, lifecycle issues, concurrency problems
-- **Codex**: Code refactoring, file editing, bulk improvements
-- **Gemini CLI**: Performance optimization, API compatibility analysis
-- **Amp**: Collaborative debugging, comprehensive test suites
-
-Each task template includes:
-- AI agent recommendations with expected resolution time
-- AI-executable action items with measurable criteria
-- File paths and investigation targets for AI context
-- Acceptance criteria verifiable by automated tools
-
-## Coding Conventions
-
-When suggesting code for this project:
-
-### File Structure
-- Single-file architecture: Keep all logic in [generate-crash-analyzer.js](generate-crash-analyzer.js)
-- Separate template file: [crashAnalyzer.template.md](crashAnalyzer.template.md) for workflow templates
-- Configuration examples: Use [config.example.json](config.example.json) as reference
-
-### Code Style
-- Use ES6+ features (const/let, arrow functions, template literals)
-- Prefer synchronous operations for CLI tool simplicity
-- Use descriptive method names following camelCase convention
-- Keep methods focused on single responsibilities
-
-### Error Handling
-- Use try-catch blocks for file operations and external commands
-- Provide user-friendly error messages with actionable guidance
-- Gracefully degrade when Firebase CLI is unavailable
-- Log warnings for skipped directories during traversal
-
-### User Interaction
-- Use readline for interactive prompts
-- Provide intelligent defaults from auto-detection
-- Show clear progress indicators and success messages
-- Validate user input before proceeding
-
-### Comments
-- Add JSDoc comments for class methods
-- Include inline comments for complex regex or parsing logic
-- Document placeholder patterns in template
-- Explain threshold values and their impact
+No interactive prompts for pre-filled fields.
 
 ## Git Workflow
 
 - Main branch: `main`
-- Keep commits atomic and descriptive
-- Update CLAUDE.md and copilot-instructions.md when adding features
 - Test globally (`npm link`) before publishing
-- Update package.json version following semver
+- Update `package.json` version following semver
+- Update this file and `.github/copilot-instructions.md` when adding features

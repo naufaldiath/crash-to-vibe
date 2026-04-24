@@ -1,0 +1,236 @@
+---
+name: crash-to-vibe
+description: >
+  Analyzes Firebase Crashlytics crashes for {{PROJECT_NAME}} ({{PLATFORM}}) and creates
+  prioritized Jira issues. Auto-activates when you mention: crashes, Crashlytics,
+  crash analysis, triage crash reports, app stability, or "analyze crashes".
+  Fetches FATAL and NON-FATAL issues, classifies by severity
+  (critical >{{CRITICAL_CRASHES}} crashes, high >{{HIGH_CRASHES}}, medium >{{MEDIUM_CRASHES}}),
+  creates Jira issues with real stacktraces. Requires firebase-basics skill.
+---
+
+# crash-to-vibe: Firebase Crashlytics → Jira
+
+**Project**: {{PROJECT_NAME}} | **Platform**: {{PLATFORM}} | **Firebase**: `{{FIREBASE_PROJECT_ID}}`
+
+## Prerequisites
+
+1. Ensure the `firebase-basics` skill is installed (covers Firebase CLI + MCP setup):
+   ```bash
+   npx -y skills add firebase/agent-skills -y
+   ```
+2. Firebase MCP server must be connected and authenticated.
+3. Atlassian MCP server must be connected (cloud: `{{JIRA_CLOUD_ID}}`).
+
+---
+
+## STEP 1: Configure Firebase Environment
+
+```
+1. Use mcp_firebase_firebase_update_environment:
+   - project_dir: "{{PROJECT_DIR}}"
+   - active_project: "{{FIREBASE_PROJECT_ID}}"
+
+2. Verify with mcp_firebase_firebase_get_environment
+
+3. If firebase.json is missing, run mcp_firebase_firebase_init with empty features: {}
+```
+
+---
+
+## STEP 2: Fetch Crash Data (FATAL + NON-FATAL)
+
+### Phase A: List Top Issues
+```
+1. FATAL crashes:
+   mcp_firebase_crashlytics_list_top_issues
+   - app_id: "{{APP_ID}}"
+   - issue_count: 15
+   - issue_type: "FATAL"
+
+2. NON-FATAL issues:
+   mcp_firebase_crashlytics_list_top_issues
+   - app_id: "{{APP_ID}}"
+   - issue_count: 10
+   - issue_type: "NON-FATAL"
+
+Extract per issue: ID, title, event count, user count, type, Firebase Console URI,
+version range (firstSeenVersion → lastSeenVersion), signals (fresh/regressed/repetitive/early).
+```
+
+### Phase B: Fetch Issue Details (top 5–10 critical)
+```
+For each priority issue:
+
+1. mcp_firebase_crashlytics_get_issue
+   - app_id: "{{APP_ID}}"
+   - issue_id: [Issue ID]
+
+2. mcp_firebase_crashlytics_get_report (sample crash)
+   - app_id: "{{APP_ID}}"
+   - issue_id: [Issue ID]
+
+   CRITICAL: Copy the ACTUAL full stacktrace with file names and line numbers.
+   Do NOT use placeholders — include the real stacktrace from the API response.
+
+3. Identify "Fresh Issues":
+   - firstSeenVersion == lastSeenVersion → new to current version
+   - Look for "fresh" signal in metadata
+```
+
+### Phase C: Compile Crash Profile Per Issue
+```
+- Basic: ID, title, type, event count, user count, crash-free %, signals
+- Detail: actual stacktrace, root cause file:line, affected devices/OS, memory data
+- Priority: apply threshold rules (STEP 4), boost fresh/regressed issues
+- Note: ~8-day reporting window; use Firebase Console links for 30-day analysis
+```
+
+---
+
+## STEP 3: Verify Jira Project
+
+```
+1. mcp_atlassian_atlassianUserInfo — verify authentication
+2. mcp_atlassian_getAccessibleAtlassianResources — confirm cloudId: "{{JIRA_CLOUD_ID}}"
+3. mcp_atlassian_getVisibleJiraProjects — find project key: "{{JIRA_PROJECT_KEY}}"
+4. mcp_atlassian_getJiraProjectIssueTypesMetadata — verify issue type "{{JIRA_ISSUE_TYPE}}"
+```
+
+---
+
+## STEP 4: Prioritize Issues
+
+```
+Priority thresholds (~8-day period):
+
+🔥 CRITICAL: >{{CRITICAL_CRASHES}} crashes OR >{{CRITICAL_USERS}} users affected
+   → Boost for "fresh" signal (new to latest version)
+   → Maintain crash-free users >99.5%
+
+🔥 HIGH: >{{HIGH_CRASHES}} crashes OR >{{HIGH_USERS}} users affected
+   → Flag "regressed" issues (previously fixed, now returned)
+
+⚡ MEDIUM: >{{MEDIUM_CRASHES}} crashes OR >{{MEDIUM_USERS}} users affected
+   → Consider "repetitive" (multiple crashes per user) and "early" (within 5s)
+
+📊 LOW: below medium thresholds — include for pattern detection
+
+Focus areas for {{PLATFORM}}:
+```
+{{#if (eq PLATFORM "android")}}
+- ViewBinding/Fragment lifecycle crashes
+- Activity lifecycle management
+- Permission handling (SCHEDULE_EXACT_ALARM, etc.)
+- Target SDK compatibility
+- Background execution limitations
+- OutOfMemoryError, threading and concurrency
+{{/if}}
+{{#if (eq PLATFORM "ios")}}
+- UIViewController lifecycle crashes
+- Auto Layout constraint conflicts
+- Memory management and retain cycles
+- App Transport Security issues
+- iOS version compatibility
+- Core Data threading issues
+{{/if}}
+{{#if (eq PLATFORM "flutter")}}
+- Flutter engine lifecycle management
+- Platform channel communication errors
+- Widget lifecycle and state management
+- Dart VM crashes and exceptions
+- Plugin compatibility problems
+- Bridge communication performance
+{{/if}}
+- Network connectivity and API integration
+- Location/GPS related problems
+- Third-party SDK integration
+
+---
+
+## STEP 5: Create Jira Issues
+
+Load `references/task-templates.md` now for detailed CRITICAL, HIGH, and PERFORMANCE issue formats including stacktrace structure, acceptance criteria, and branch/commit conventions.
+
+Use `mcp_atlassian_createJiraIssue` for each issue:
+- cloudId: "{{JIRA_CLOUD_ID}}"
+- projectKey: "{{JIRA_PROJECT_KEY}}"
+- issueTypeName: "{{JIRA_ISSUE_TYPE}}"
+- summary: [from template]
+- description: [from template — include ACTUAL stacktrace, not placeholders]
+- additional_fields: priority + labels (see task-templates.md for exact values)
+
+---
+
+## STEP 6: Platform-Specific Patterns
+
+Load `references/platform-patterns.md` for common {{PLATFORM}} crash patterns and recommended AI agent assignments per category.
+
+---
+
+## STEP 7: Summary Report
+
+After all issues created, output:
+
+```
+## Firebase → Jira Summary
+
+Issues Created: [X] total
+  🔥 Critical: [X] — fix this week
+  🔥 High:     [X] — fix this sprint
+  ⚡ Medium:   [X] — next sprint
+  📊 Low:      [X] — monitoring
+
+Top 3 Critical Issues:
+1. [title] — [X] crashes, [Y] users
+2. [title] — [X] crashes, [Y] users
+3. [title] — [X] crashes, [Y] users
+
+AI Agent Guide:
+- Critical: Claude Code (complex analysis) → immediate
+- Performance: Gemini CLI (optimization) → automated benchmarking
+- Refactoring: Codex → bulk improvements
+- Testing: Amp → comprehensive test suites
+
+Firebase Console links included in all issues for 30-day investigation.
+Target: crash-free users >99.5%
+```
+
+**Post-execution**: Open Jira at {{JIRA_CLOUD_ID}} → project "{{JIRA_PROJECT_KEY}}" → assign and triage created issues.
+
+{{#if (eq BITBUCKET_ENABLED "enabled")}}
+Load `references/pr-workflow.md` after AI completes each fix to create the Bitbucket PR.
+{{/if}}
+
+---
+
+## Execution Parameters
+
+- **App ID**: `{{APP_ID}}`
+- **Environment**: {{FIREBASE_ENVIRONMENT}} (config: `{{FIREBASE_CONFIG_FILE}}`)
+- **Project directory**: `{{PROJECT_DIR}}`
+- **Jira**: {{JIRA_CLOUD_ID}} / {{JIRA_PROJECT_KEY}} ({{JIRA_ISSUE_TYPE}})
+- **Labels**: {{JIRA_LABELS}}
+- **Reporting window**: ~8 days (use Console links for 30-day analysis)
+- **Crash types**: FATAL + NON-FATAL
+- **Task limit**: 15–25 (focus highest impact; API max 100 per call)
+{{#if (eq BITBUCKET_ENABLED "enabled")}}
+- **Bitbucket**: {{BITBUCKET_WORKSPACE}}/{{BITBUCKET_REPO_SLUG}} → `{{BITBUCKET_TARGET_BRANCH}}`
+{{/if}}
+
+## Success Criteria
+
+- [ ] Firebase environment configured and verified
+- [ ] FATAL issues fetched (Phase A)
+- [ ] NON-FATAL issues fetched (Phase A)
+- [ ] Detailed crash data + real stacktraces for top 5–10 issues (Phase B)
+- [ ] Fresh issues identified (Phase C)
+- [ ] All issues >{{MEDIUM_CRASHES}} events have Jira issues with complete stacktraces
+- [ ] Issues include affected devices, OS versions, memory context, signals
+- [ ] Fresh issues boosted in priority; regressed issues flagged
+- [ ] Firebase Console links in all issues
+- [ ] Monitoring/prevention issue created
+- [ ] Crash-free users target >99.5% in acceptance criteria
+{{#if (eq BITBUCKET_ENABLED "enabled")}}
+- [ ] PRs created via Bitbucket MCP after AI fixes, linked to Jira issues
+{{/if}}

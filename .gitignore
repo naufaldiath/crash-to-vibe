@@ -1,0 +1,6 @@
+node_modules/
+last-config.json
+*.execution.log
+.worktrees/
+firebase-debug.log
+.DS_Store

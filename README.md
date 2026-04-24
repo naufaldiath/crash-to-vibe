@@ -1,122 +1,107 @@
 # 🔥 crash-to-vibe
 
-**Firebase Crashlytics to Vibe Kanban - AI-Powered Workflow Generator**
+**Firebase Crashlytics → Jira — Agent Skills Installer**
 
-A powerful CLI tool that automatically generates AI-optimized workflows for converting Firebase Crashlytics crash data into actionable Vibe Kanban tasks. Built for mobile developers working with Android, iOS, and Flutter projects.
+Installs an [Agent Skills](https://agentskills.io) skill that auto-activates Firebase Crashlytics crash analysis and Jira task creation in Claude Code, Gemini CLI, Codex, and GitHub Copilot. Run once, then just tell your AI agent "analyze my crashes."
 
 ## ✨ Features
 
-- **🔍 Smart Auto-Detection**: Recursively discovers Firebase configuration files
-- **🌍 Multi-Environment Support**: Handles multiple environments (Production, Development, Staging)
-- **📱 Platform Support**: Works with Android, iOS, and Flutter projects
-- **🤖 AI CLI Execution**: Direct integration with Claude Code, Copilot, Gemini, and Codex
-- **🔥 Firebase CLI Integration**: Automatically fetches project and app information
-- **⚙️ Customizable Thresholds**: Configure crash/user thresholds for priority classification
-- **🏷️ Jira Labels Support**: Configure default labels for Jira tickets (default: `crash-to-vibe`)
-- **📋 Comprehensive Tasks**: Creates detailed Kanban tasks with acceptance criteria
-- **🚀 Multiple Execution Modes**: Generate-only or auto-execute with AI CLI
+- **🤖 AI Auto-Activation**: Skill auto-loads when you mention crashes or Crashlytics — no manual file passing
+- **🌐 Cross-Client**: Works in Claude Code, Gemini CLI, Codex, GitHub Copilot (Agent Skills standard)
+- **🔍 Smart Auto-Detection**: Recursively discovers Firebase config files up to 10 levels deep
+- **📱 Multi-Platform**: Android, iOS, Flutter
+- **🌍 Multi-Environment**: Production, Development, Staging environments
+- **🎯 Jira Integration**: Creates prioritized issues via Atlassian MCP with real stacktraces
+- **🔀 Bitbucket PRs** (optional): Auto-creates pull requests after AI fixes
+- **⚙️ Configurable Thresholds**: CRITICAL / HIGH / MEDIUM / LOW crash priority classification
 
 ## 🚀 Quick Start
 
-### Installation
-
-#### Option 1: Install from npm (Recommended)
+### 1. Install
 
 ```bash
-# Install globally from npm
 npm install -g crash-to-vibe
 ```
 
-#### Option 2: Install from Source
+### 2. Run in your mobile project
 
 ```bash
-# Clone the repository
-git clone https://github.com/naufaldiath/crash-to-vibe.git
-cd crash-to-vibe
-
-# Install dependencies
-npm install
-
-# Create global symlink for easy access
-npm link
-```
-
-### Verify Installation
-
-```bash
-# Check if installed correctly
-crash-to-vibe --help
-```
-
-### Usage
-
-#### Interactive Mode (Recommended)
-```bash
-# Navigate to your mobile project
 cd /path/to/your/mobile/project
-
-# Run the generator - will auto-detect AI CLIs
 crash-to-vibe
 ```
 
-#### Generate Only Mode
+Answers a few prompts (Firebase project, Jira details), then installs the skill into `.agents/skills/crash-to-vibe/`.
+
+### 3. Use in your AI agent
+
+Open Claude Code (or Gemini CLI, Codex, Copilot) in the same project and say:
+
+> "Analyze my Firebase crashes and create Jira issues"
+
+The skill auto-activates — no extra setup needed.
+
+## 📦 Installation Options
+
+### From npm (recommended)
+
 ```bash
-# Just generate the workflow file without AI execution
-crash-to-vibe --generate-only
+npm install -g crash-to-vibe
 ```
 
-#### Force Specific AI CLI
+### From source
+
 ```bash
-# Execute with Codex CLI
-crash-to-vibe --cli codex
-
-# Execute with Gemini CLI
-crash-to-vibe --cli gemini
-
-# Execute with GitHub Copilot
-crash-to-vibe --cli copilot
+git clone https://github.com/naufaldiath/crash-to-vibe.git
+cd crash-to-vibe
+npm link
 ```
 
-#### Use Last Configuration
-```bash
-# Reuse the last saved configuration (skip prompts)
-crash-to-vibe --use-last-config
+## 🎛️ CLI Flags
 
-# Combine with other flags
-crash-to-vibe --use-last-config --cli claude
-crash-to-vibe --use-last-config --generate-only
+```
+crash-to-vibe [options]
+
+Options:
+  --use-last-config   Skip prompts, reuse last saved configuration
+  --config <file>     Load predefined config file (for team sharing)
+  --global            Install to ~/.agents/skills/ (works in all projects)
+  --force             Overwrite existing skill installation
+  --dry-run           Preview files to be written without writing
+  --also-claude       Also install to .claude/skills/
+  --also-gemini       Also install to .gemini/skills/
+  --help, -h          Show this help
 ```
 
-#### Use Team Configuration (Recommended for Teams)
-```bash
-# Use a predefined team configuration file
-crash-to-vibe --config team-config.json
+### Examples
 
-# Combine with execution flags
-crash-to-vibe --config team-config.json --cli claude
-crash-to-vibe --config team-config.json --generate-only
+```bash
+crash-to-vibe                           # Interactive setup, install locally
+crash-to-vibe --global                  # Install to ~/.agents/skills/ (all projects)
+crash-to-vibe --use-last-config         # Reinstall with saved config
+crash-to-vibe --config team.json        # Use team's shared config
+crash-to-vibe --dry-run                 # Preview what would be installed
+crash-to-vibe --force                   # Overwrite existing installation
+crash-to-vibe --global --also-claude    # Install globally + .claude/skills/
 ```
 
-#### Show Help
-```bash
-crash-to-vibe --help
+## 📁 Installed Skill Structure
+
+```
+.agents/skills/crash-to-vibe/
+├── SKILL.md                    # Workflow + auto-activation triggers
+└── references/
+    ├── task-templates.md       # CRITICAL/HIGH/MEDIUM/LOW Jira issue templates
+    ├── platform-patterns.md    # Android/iOS/Flutter crash pattern guide
+    └── pr-workflow.md          # Bitbucket PR workflow (only if Bitbucket configured)
 ```
 
 ## 📋 Prerequisites
 
-### System Requirements
-- **Node.js**: v14.0.0 or higher
-- **Firebase Project**: An active Firebase project with Crashlytics enabled
-- **Firebase CLI** (recommended): For enhanced auto-detection
-- **Task Management System**: Vibe Kanban or Jira (Atlassian) account
-- **AI CLI** (optional): One or more of the supported AI CLIs for auto-execution
-
 ### Required MCP Servers
 
-Before using crash-to-vibe with AI execution, you need to install and configure the required MCP servers in your AI IDE's configuration file (e.g., `mcp.json` for Claude Desktop, Cline, or Windsurf).
+Configure these in your AI IDE's MCP settings before using the skill.
 
-#### 1. Firebase MCP (Required)
-For fetching crash data from Firebase Crashlytics:
+#### Firebase MCP (required)
 
 ```json
 {
@@ -124,42 +109,16 @@ For fetching crash data from Firebase Crashlytics:
     "firebase": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "firebase-tools@latest",
-        "experimental:mcp",
-        "--only",
-        "crashlytics,core"
-      ]
+      "args": ["-y", "firebase-tools@latest", "experimental:mcp", "--only", "crashlytics,core"]
     }
   }
 }
 ```
 
-**Setup**: 
-- Requires Firebase CLI authentication: `firebase login`
-- Set active project: `firebase use <project-id>`
+After adding: `firebase login` and `firebase use <project-id>`.
 
-#### 2. Task Management MCP (Choose One)
+#### Atlassian MCP (required — for Jira)
 
-**Option A: Vibe Kanban MCP**
-```json
-{
-  "servers": {
-    "vibe_kanban": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "vibe-kanban",
-        "--mcp"
-      ]
-    }
-  }
-}
-```
-
-**Option B: Atlassian MCP (Jira)**
 ```json
 {
   "servers": {
@@ -171,53 +130,13 @@ For fetching crash data from Firebase Crashlytics:
 }
 ```
 
-**Setup**: Requires Atlassian account authentication via the MCP server UI.
+Authenticate via the MCP server UI the first time.
 
-#### 3. Bitbucket MCP (Optional - for PR automation)
-For automated pull request creation after AI fixes:
-
-```json
-{
-  "servers": {
-    "bitbucket": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "bitbucket-mcp@latest"
-      ],
-      "env": {
-        "BITBUCKET_URL": "https://api.bitbucket.org/2.0",
-        "BITBUCKET_WORKSPACE": "your-workspace",
-        "BITBUCKET_USERNAME": "your-email@example.com",
-        "BITBUCKET_PASSWORD": "your-app-password"
-      }
-    }
-  }
-}
-```
-
-**Setup**: 
-- Create Bitbucket App Password: Settings → Personal Bitbucket settings → App passwords
-- Replace `your-workspace`, `your-email@example.com`, and `your-app-password`
-
-#### Complete MCP Configuration Example
-
-Here's a complete `mcp.json` with all required servers:
+#### Bitbucket MCP (optional — for PR automation)
 
 ```json
 {
   "servers": {
-    "firebase": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "firebase-tools@latest", "experimental:mcp", "--only", "crashlytics,core"]
-    },
-    "vibe_kanban": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "vibe-kanban", "--mcp"]
-    },
     "bitbucket": {
       "type": "stdio",
       "command": "npx",
@@ -233,236 +152,124 @@ Here's a complete `mcp.json` with all required servers:
 }
 ```
 
-#### MCP Configuration Locations
+Create an App Password at Bitbucket → Settings → Personal settings → App passwords.
 
-| AI IDE | Configuration File Location |
-|--------|----------------------------|
-| **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)<br>`%APPDATA%\Claude\claude_desktop_config.json` (Windows) |
-| **Cline** | `.vscode/mcp.json` or workspace settings |
-| **Windsurf** | `.windsurf/mcp.json` or IDE settings |
-| **Cursor** | `.cursor/mcp.json` or IDE settings |
+### MCP Config Locations
 
-#### Verification
-
-After configuring MCP servers:
-
-1. **Restart your AI IDE**
-2. **Check MCP status** in the IDE's MCP panel/settings
-3. **Test Firebase MCP**: Ask AI to "list Firebase projects"
-4. **Test Vibe/Jira MCP**: Ask AI to "list Vibe projects" or "list Jira projects"
-5. **Test Bitbucket MCP** (if configured): Ask AI to "list Bitbucket repositories"
-
-### Supported AI CLIs
-
-| AI CLI | Installation | Authentication | Execution Mode |
-|--------|--------------|----------------|----------------|
-| **Claude Code** | [Download](https://claude.ai/download) | `claude auth login` | Autonomous (non-interactive) |
-| **GitHub Copilot CLI** | `npm install -g @github/copilot` | Set `GH_TOKEN` env var | Autonomous (safety-restricted) |
-| **Gemini CLI** | `npm install -g @google/gemini-cli` | `gemini auth login` | Autonomous (auto-approve) |
-| **Codex CLI** | `npm install -g @openai/codex` or `brew install codex` | Sign in with ChatGPT or set `OPENAI_API_KEY` | Autonomous (exec mode) |
-
-## 🔧 How It Works
-
-1. **Project Detection**: Automatically scans for Firebase configuration files
-2. **Configuration Collection**: Interactive prompts for project setup
-3. **AI CLI Detection**: Checks for installed and authenticated AI CLIs
-4. **Execution Mode Selection**: Choose generate-only or execute with AI CLI
-5. **Workflow Generation**: Creates comprehensive markdown workflow
-6. **AI Execution** (optional): Automatically runs workflow with selected AI CLI
-7. **Logging**: Saves execution logs to `crashAnalyzer.execution.log`
+| AI IDE | Config file |
+|--------|-------------|
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)<br>`%APPDATA%\Claude\claude_desktop_config.json` (Windows) |
+| Cline / Windsurf / Cursor | `.vscode/mcp.json` or IDE settings |
 
 ## 🎯 Priority Classification
 
-| Priority | Threshold | Timeline | AI Agent |
-|----------|-----------|----------|----------|
-| 🔥 **CRITICAL** | >800 crashes OR >600 users | This week | Claude Code |
-| ⚠️ **HIGH** | >400 crashes OR >300 users | This sprint | Codex |
-| 🔶 **MEDIUM** | >100 crashes OR >50 users | Next sprint | Gemini CLI |
-| 📊 **LOW** | <100 crashes | Backlog | Setup Script |
+Issues are classified by crash volume over the ~8-day Crashlytics reporting window:
+
+| Priority | Default threshold | Jira priority | Timeline |
+|----------|------------------|---------------|----------|
+| 🔥 CRITICAL | >800 crashes OR >600 users | Highest | This week |
+| 🔥 HIGH | >400 crashes OR >300 users | High | This sprint |
+| ⚡ MEDIUM | >100 crashes OR >50 users | Medium | Next sprint |
+| 📊 LOW | below medium | Low | Monitoring |
+
+Thresholds are configurable during setup or via config file.
 
 ## 🤝 Team Configuration
 
-For teams working on the same project, you can create and share a predefined configuration file:
-
-### 1. Create Team Configuration
-
-Create a `team-config.json` file based on `team-config.example.json`:
+Share a `team-config.json` so teammates skip interactive prompts:
 
 ```json
 {
   "project": {
-    "directory": "/path/to/talenta-mobile-android",
-    "name": "talenta-mobile-android",
+    "directory": "/path/to/your-mobile-project",
+    "name": "your-mobile-app",
     "platform": "android"
   },
   "firebase": {
-    "projectId": "talenta-production",
-    "appId": "1:342657588726:android:8b101aa1e055fba4"
-  },
-  "kanban": {
-    "system": "jira"
+    "projectId": "your-firebase-project",
+    "appId": "1:123456789:android:abcdef123456"
   },
   "jira": {
-    "cloudId": "jurnal.atlassian.net",
-    "projectKey": "TLMN",
-    "issueType": "Task",
+    "cloudId": "your-company.atlassian.net",
+    "projectKey": "PROJ",
+    "issueType": "Bug",
     "labels": "crash-to-vibe"
   },
   "bitbucket": {
-    "workspace": "mid-kelola-indonesia",
-    "repoSlug": "talenta-mobile-android",
+    "workspace": "your-workspace",
+    "repoSlug": "your-repo-slug",
     "targetBranch": "develop",
     "reviewers": []
   },
   "thresholds": {
     "critical": { "crashes": 800, "users": 600 },
-    "high": { "crashes": 400, "users": 300 },
-    "medium": { "crashes": 100, "users": 50 }
+    "high":     { "crashes": 400, "users": 300 },
+    "medium":   { "crashes": 100, "users": 50 }
   }
 }
 ```
 
-### 2. Share with Team
-
-Commit the configuration file to your repository:
+Commit `team-config.json` to your repo. Team members run:
 
 ```bash
-# Add to version control
-git add team-config.json
-git commit -m "Add crash-to-vibe team configuration"
-git push
-```
-
-### 3. Team Members Usage
-
-Team members can use the shared configuration:
-
-```bash
-# Clone the project
-git clone <your-repo>
-cd <your-project>
-
-# Use team configuration
 crash-to-vibe --config team-config.json
-
-# Or with automatic execution
-crash-to-vibe --config team-config.json --cli claude
 ```
 
-### Benefits
-
-✅ **Consistent Configuration**: Everyone uses the same Firebase project, Jira project, and thresholds  
-✅ **No Manual Setup**: Skip interactive prompts  
-✅ **Version Controlled**: Track configuration changes  
-✅ **Onboarding**: New team members get started instantly  
+See `team-config.example.json` for a full reference.
 
 ## 📱 Platform Support
 
-| Platform | Config File | Auto-Detection |
-|----------|-------------|---------------|
-| Android | `google-services.json` | ✅ |
-| iOS | `GoogleService-Info.plist` | ✅ |
-| Flutter | Both files | ✅ |
-
-## 🛠️ Development
-
-```bash
-# Clone and set up
-git clone https://github.com/naufaldiath/crash-to-vibe.git
-cd crash-to-vibe
-npm link
-
-# Test
-crash-to-vibe --help
-```
+| Platform | Config file detected | Notes |
+|----------|---------------------|-------|
+| Android | `google-services.json` | Parsed automatically |
+| iOS | `GoogleService-Info.plist` | Parsed automatically |
+| Flutter | Both files | Prompted to confirm Flutter |
 
 ## 🔧 Troubleshooting
 
-### Firebase CLI Not Found
+### Firebase CLI not found
+
 ```bash
 npm install -g firebase-tools
 firebase login
 firebase use your-project-id
 ```
 
-### No Firebase Config Files Found
-- Ensure config files exist in project root or subdirectories
-- Check file permissions (readable)
+### Skill already installed
 
-### AI CLI Not Detected
-If your AI CLI is installed but not detected:
-
-1. **Claude Code**: Make sure `claude` command is in PATH
-2. **GitHub Copilot CLI**: Install globally `npm install -g @github/copilot` and set token
-3. **Gemini CLI**: Verify global installation `npm list -g @google/generative-ai-cli`
-4. **Codex CLI**: Check installation `which codex` and authenticate
-
-### Authentication Issues
 ```bash
-# Claude Code
-claude auth login
-
-# GitHub Copilot CLI
-export GH_TOKEN=your-github-token-here
-# Generate at: https://github.com/settings/personal-access-tokens/new
-# Enable "Copilot Requests" permission
-# Note: Executes autonomously with safety restrictions (denies rm, git push)
-
-# Gemini CLI
-gemini auth login
-
-# Codex CLI (sign in with ChatGPT or set API key)
-codex  # Interactive sign-in
-# or
-export OPENAI_API_KEY=your-key-here
+crash-to-vibe --force          # overwrite
+crash-to-vibe --dry-run        # preview first
 ```
 
-### Execution Failed
-Check the execution log for details:
-```bash
-cat crashAnalyzer.execution.log
-```
+### No Firebase config files found
 
-## 🎯 Exit Codes
-
-| Code | Description |
-|------|-------------|
-| `0` | Success |
-| `1` | Generation failed |
-| `2` | Execution failed |
+- Confirm `google-services.json` or `GoogleService-Info.plist` exists in your project tree
+- The tool searches up to 10 directory levels deep, skipping `node_modules`, `.git`, `build`, `Pods`
 
 ## 📝 Output Files
 
-| File | Description |
-|------|-------------|
-| `crashAnalyzer.md` | Generated workflow file |
-| `crashAnalyzer.execution.log` | AI CLI execution log (when using --cli) |
-| `~/.crash-analyzer-config.json` | Saved configuration (global install) |
-| `last-config.json` | Saved configuration (local run) |
-| `team-config.json` | Team shared configuration (optional) |
+| File | Location | Purpose |
+|------|----------|---------|
+| `.agents/skills/crash-to-vibe/` | `process.cwd()` | Installed skill (default) |
+| `~/.agents/skills/crash-to-vibe/` | Home dir | Global install (`--global`) |
+| `~/.crash-analyzer-config.json` | Home dir | Saved config (global install) |
+| `last-config.json` | Script dir | Saved config (local run) |
 
-**Note**: The `project.directory` field in config files is ignored when using `--config`. The tool will use your current working directory instead, making the config portable across team members' machines.
+## 🗑️ Uninstall
 
-## �️ Uninstallation
-
-### If installed from npm
 ```bash
+# Uninstall CLI
 npm uninstall -g crash-to-vibe
+
+# Remove installed skill
+rm -rf .agents/skills/crash-to-vibe          # local
+rm -rf ~/.agents/skills/crash-to-vibe        # global
 ```
 
-### If installed from source (npm link)
-```bash
-# Remove the global symlink
-npm unlink -g crash-to-vibe
+## 📄 License
 
-# Or from the project directory
-cd crash-to-vibe
-npm unlink
-```
-
-## �📄 License
-
-MIT License
+MIT
 
 ---
 

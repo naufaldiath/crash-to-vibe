@@ -2,9 +2,16 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const readline = require('readline');
 const { execSync } = require('child_process');
 const { AIExecutorFactory } = require('./ai-executors');
+
+// Maps template variable names to config values
+const TEMPLATE_VAR_MAP = {
+  PLATFORM:          (c) => c.project?.platform,
+  BITBUCKET_ENABLED: (c) => c.bitbucket?.workspace ? 'enabled' : 'disabled',
+};
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -16,13 +23,8 @@ class CrashAnalyzerGenerator {
     this.config = {
       project: {},
       firebase: {},
-      kanban: {},
       jira: {},
       bitbucket: {},
-      execution: {
-        mode: 'generate-only', // 'generate-only' or 'cli'
-        cli: null // 'claude', 'copilot', 'gemini', 'codex'
-      },
       thresholds: {
         critical: { crashes: 800, users: 600 },
         high: { crashes: 400, users: 300 },
@@ -41,26 +43,36 @@ class CrashAnalyzerGenerator {
   parseCliArgs() {
     const args = process.argv.slice(2);
     const parsed = {
-      generateOnly: false,
-      forceCli: null,
-      help: false,
+      global: false,
+      force: false,
+      dryRun: false,
+      alsoClaude: false,
+      alsoGemini: false,
       useLastConfig: false,
-      configFile: null
+      configFile: null,
+      help: false,
     };
 
     for (let i = 0; i < args.length; i++) {
-      if (args[i] === '--generate-only') {
-        parsed.generateOnly = true;
-      } else if (args[i] === '--cli' && args[i + 1]) {
-        parsed.forceCli = args[i + 1];
-        i++; // Skip next arg
-      } else if (args[i] === '--help' || args[i] === '-h') {
-        parsed.help = true;
-      } else if (args[i] === '--use-last-config') {
-        parsed.useLastConfig = true;
-      } else if (args[i] === '--config' && args[i + 1]) {
-        parsed.configFile = args[i + 1];
-        i++; // Skip next arg
+      switch (args[i]) {
+        case '--global':          parsed.global = true; break;
+        case '--force':           parsed.force = true; break;
+        case '--dry-run':         parsed.dryRun = true; break;
+        case '--also-claude':     parsed.alsoClaude = true; break;
+        case '--also-gemini':     parsed.alsoGemini = true; break;
+        case '--use-last-config': parsed.useLastConfig = true; break;
+        case '--help': case '-h': parsed.help = true; break;
+        case '--config':
+          if (args[i + 1]) { parsed.configFile = args[++i]; }
+          break;
+        // Legacy flags: warn and ignore
+        case '--generate-only':
+          console.warn('Warning: --generate-only removed in v2. Skills are always installed. Use --dry-run to preview.');
+          break;
+        case '--cli':
+          console.warn('Warning: --cli removed in v2. AI agents auto-activate from the installed skill.');
+          if (args[i + 1] && !args[i + 1].startsWith('--')) i++;
+          break;
       }
     }
 
@@ -72,39 +84,33 @@ class CrashAnalyzerGenerator {
    */
   showHelp() {
     console.log(`
-🔥 Firebase Crashlytics to Task Management Workflow Generator
+🔥 Firebase Crashlytics → Task Management Skill Installer (v2)
 
 Usage: crash-to-vibe [options]
 
 Options:
-  --generate-only     Only generate the workflow file without executing
-  --cli <name>        Execute with specific AI CLI (claude, copilot, gemini, codex)
-  --use-last-config   Use the last saved configuration (skip interactive prompts)
-  --config <file>     Use a predefined configuration file (for team sharing)
-  --help, -h          Show this help message
+  --use-last-config   Skip prompts, reuse last saved configuration
+  --config <file>     Load predefined config file (for team sharing)
+  --global            Install to ~/.agents/skills/ (all projects)
+  --force             Overwrite existing skill installation
+  --dry-run           Preview files to be written without writing
+  --also-claude       Also install to .claude/skills/
+  --also-gemini       Also install to .gemini/skills/
+  --help, -h          Show this help
 
 Examples:
-  crash-to-vibe                      # Interactive mode with AI CLI detection
-  crash-to-vibe --generate-only      # Only generate workflow file
-  crash-to-vibe --cli claude         # Generate and execute with Claude Code
-  crash-to-vibe --use-last-config    # Reuse last configuration
-  crash-to-vibe --config team.json   # Use team's predefined config
-  crash-to-vibe --config team.json --cli codex  # Use team config and execute
+  crash-to-vibe                           # Interactive setup, install locally
+  crash-to-vibe --global                  # Install to ~/.agents/skills/
+  crash-to-vibe --use-last-config         # Reinstall with saved config
+  crash-to-vibe --config team.json        # Use team's shared config
+  crash-to-vibe --dry-run                 # Preview what would be installed
+  crash-to-vibe --force                   # Overwrite existing installation
+  crash-to-vibe --global --also-claude    # Install globally + .claude/skills/
 
-Team Configuration:
-  You can create a team configuration file (e.g., team-config.json) based on
-  config.example.json and share it with your team. Team members can then use
-  --config <file> to apply the same settings without interactive prompts.
+After installation your AI agent auto-activates when you mention crashes or
+Firebase Crashlytics. Supports Claude Code, Gemini CLI, Codex, GitHub Copilot.
 
-Supported Task Management Systems:
-  - Vibe Kanban (via MCP)
-  - Jira (via Atlassian MCP)
-
-Supported AI CLIs:
-  - Claude Code (claude)
-  - GitHub Copilot CLI (copilot)
-  - Gemini CLI (gemini)
-  - Codex CLI (codex)
+Skill install path (default): .agents/skills/crash-to-vibe/
 `);
   }
 
@@ -480,7 +486,7 @@ Supported AI CLIs:
   }
 
   async collectConfiguration() {
-    console.log('🚀 Firebase Crashlytics to Kanban - Generic Workflow Generator\n');
+    console.log('🚀 Firebase Crashlytics → Jira Skill Installer\n');
     
     // Auto-detect project info
     console.log('🔍 Auto-detecting project configuration...');
@@ -565,51 +571,32 @@ Supported AI CLIs:
       );
     }
 
-    // Kanban/Jira configuration
-    console.log('\n🎯 Task Management System Configuration');
-    const taskSystem = await this.promptUser(
-      'Select task management system (vibe/jira)',
-      'vibe'
+    // Jira configuration
+    console.log('\n🎯 Jira Configuration (Atlassian MCP)');
+
+    this.config.jira = this.config.jira || {};
+
+    this.config.jira.cloudId = await this.promptUser(
+      'Atlassian Cloud ID (or site URL, e.g., yoursite.atlassian.net)',
+      ''
     );
 
-    this.config.kanban.system = taskSystem.toLowerCase();
+    this.config.jira.projectKey = await this.promptUser(
+      'Jira project key (e.g., PROJ)',
+      ''
+    );
 
-    if (this.config.kanban.system === 'jira') {
-      console.log('🎯 Using Jira (Atlassian MCP)');
+    this.config.jira.issueType = await this.promptUser(
+      'Default issue type (Bug/Task/Story)',
+      'Bug'
+    );
 
-      this.config.jira = this.config.jira || {};
+    this.config.jira.labels = await this.promptUser(
+      'Default Jira labels (comma-separated)',
+      'crash-to-vibe'
+    );
 
-      this.config.jira.cloudId = await this.promptUser(
-        'Atlassian Cloud ID (or site URL, e.g., yoursite.atlassian.net)',
-        ''
-      );
-
-      this.config.jira.projectKey = await this.promptUser(
-        'Jira project key (e.g., PROJ)',
-        ''
-      );
-
-      this.config.jira.issueType = await this.promptUser(
-        'Default issue type (Bug/Task/Story)',
-        'Bug'
-      );
-
-      this.config.jira.labels = await this.promptUser(
-        'Default Jira labels (comma-separated)',
-        'crash-to-vibe'
-      );
-
-      console.log('✅ Jira configuration completed');
-    } else {
-      console.log('🎯 Using Vibe Kanban system');
-
-      this.config.kanban.projectName = await this.promptUser(
-        'Vibe Kanban project name',
-        `${this.config.project.name}`
-      );
-
-      console.log('✅ Vibe Kanban configuration completed');
-    }
+    console.log('✅ Jira configuration completed');
 
     // Bitbucket configuration (optional for PR creation)
     console.log('\n🔀 Bitbucket Configuration (optional - for automated PR creation)');
@@ -679,141 +666,145 @@ Supported AI CLIs:
   /**
    * Detect available AI CLIs and prompt user for execution mode
    */
-  async selectExecutionMode() {
-    // Skip if --generate-only flag is provided
-    if (this.cliArgs.generateOnly) {
-      console.log('📝 Generate-only mode (from --generate-only flag)');
-      this.config.execution.mode = 'generate-only';
-      return;
-    }
-
-    // Skip if --cli flag is provided
-    if (this.cliArgs.forceCli) {
-      const executor = this.aiExecutorFactory.getExecutor(this.cliArgs.forceCli);
-      if (!executor) {
-        console.log(`❌ Unknown CLI: ${this.cliArgs.forceCli}`);
-        console.log('   Supported CLIs: claude, copilot, gemini, codex');
-        process.exit(1);
-      }
-      
-      if (!executor.isInstalled()) {
-        console.log(`❌ ${executor.displayName} is not installed`);
-        console.log(executor.getInstallInstructions());
-        process.exit(1);
-      }
-
-      const authStatus = executor.checkAuth();
-      if (!authStatus.authenticated) {
-        console.log(`❌ ${executor.displayName} authentication failed: ${authStatus.message}`);
-        console.log(executor.getAuthInstructions());
-        process.exit(1);
-      }
-
-      this.config.execution.mode = 'cli';
-      this.config.execution.cli = this.cliArgs.forceCli;
-      console.log(`🤖 Using ${executor.displayName} (from --cli flag)`);
-      return;
-    }
-
-    // Interactive mode: ask user preference first
-    console.log('\n🤖 Execution Mode Selection');
-    console.log('1. Generate workflow file only (manual execution)');
-    console.log('2. Generate and execute with AI CLI (automated)');
-    
-    const modeChoice = await this.promptUser(
-      'Select mode (1-2)',
-      '1'
-    );
-
-    if (modeChoice === '1') {
-      console.log('📝 Generating workflow file only');
-      this.config.execution.mode = 'generate-only';
-      return;
-    }
-
-    // User wants AI execution, now detect available CLIs
-    console.log('\n🔍 Detecting available AI CLIs...');
-    
-    let availableExecutors;
-    try {
-      availableExecutors = this.aiExecutorFactory.detectAvailableExecutors();
-    } catch (error) {
-      console.log(`\n❌ Error detecting AI CLIs: ${error.message}`);
-      console.log('⚠️  Falling back to generate-only mode');
-      this.config.execution.mode = 'generate-only';
-      return;
-    }
-    
-    if (availableExecutors.length === 0) {
-      console.log('⚠️  No AI CLIs detected');
-      console.log('💡 Workflow will be generated for manual execution');
-      this.config.execution.mode = 'generate-only';
-      return;
-    }
-
-    // Check authentication for available executors
-    const readyExecutors = availableExecutors.filter(executor => {
-      try {
-        const authStatus = executor.checkAuth();
-        return authStatus.authenticated;
-      } catch (error) {
-        console.log(`   ⚠️  ${executor.displayName}: Error checking auth - ${error.message}`);
-        return false;
-      }
-    });
-
-    console.log(`\n✅ Found ${availableExecutors.length} installed AI CLI(s):`);
-    availableExecutors.forEach(executor => {
-      const authStatus = executor.checkAuth();
-      const status = authStatus.authenticated ? '✓ Ready' : '⚠ Not authenticated';
-      console.log(`   - ${executor.displayName}: ${status}`);
-    });
-
-    // Build options
-    const options = ['Generate workflow file only'];
-    const executorMap = {};
-    let optionIndex = 2;
-
-    readyExecutors.forEach(executor => {
-      options.push(`Generate and execute with ${executor.displayName}`);
-      executorMap[optionIndex] = executor.name;
-      optionIndex++;
-    });
-
-    // Show not authenticated executors
-    const notAuthExecutors = availableExecutors.filter(e => !readyExecutors.includes(e));
-    if (notAuthExecutors.length > 0) {
-      console.log('\n⚠️  Not authenticated:');
-      notAuthExecutors.forEach(executor => {
-        console.log(`   - ${executor.displayName}`);
-        console.log(`     ${executor.getAuthInstructions()}`);
+  /**
+   * Resolve {{#if (eq VAR "VALUE")}}...{{/if}} blocks using config values.
+   * Bare {{#if signal}} blocks are left untouched (rewritten as prose in templates).
+   */
+  resolveConditionals(content, config) {
+    const pattern = /\{\{#if \(eq (\w+) "([^"]+)"\)\}\}([\s\S]*?)\{\{\/if\}\}/g;
+    let prev = null;
+    let result = content;
+    while (prev !== result) {
+      prev = result;
+      result = result.replace(pattern, (_, varName, expected, body) => {
+        const actual = TEMPLATE_VAR_MAP[varName]?.(config);
+        return actual === expected ? body : '';
       });
     }
+    return result.replace(/\n{3,}/g, '\n\n');
+  }
 
-    // Prompt user
-    console.log('\n📋 How would you like to proceed?');
-    options.forEach((option, index) => {
-      console.log(`   ${index + 1}. ${option}`);
-    });
+  /**
+   * Replace {{TOKEN}} placeholders with config values.
+   */
+  resolvePlaceholders(content, config) {
+    const replacements = {
+      '{{PROJECT_DIR}}':             config.project.directory || '',
+      '{{PROJECT_NAME}}':            config.project.name || '',
+      '{{PLATFORM}}':                config.project.platform || '',
+      '{{FIREBASE_PROJECT_ID}}':     config.firebase.projectId || '',
+      '{{APP_ID}}':                  config.firebase.appId || '',
+      '{{JIRA_CLOUD_ID}}':           config.jira?.cloudId || '',
+      '{{JIRA_PROJECT_KEY}}':        config.jira?.projectKey || '',
+      '{{JIRA_ISSUE_TYPE}}':         config.jira?.issueType || 'Bug',
+      '{{JIRA_LABELS}}':             config.jira?.labels || 'crash-to-vibe',
+      '{{CRITICAL_CRASHES}}':        String(config.thresholds.critical.crashes),
+      '{{HIGH_CRASHES}}':            String(config.thresholds.high.crashes),
+      '{{MEDIUM_CRASHES}}':          String(config.thresholds.medium.crashes),
+      '{{CRITICAL_USERS}}':          String(config.thresholds.critical.users),
+      '{{HIGH_USERS}}':              String(config.thresholds.high.users),
+      '{{MEDIUM_USERS}}':            String(config.thresholds.medium.users),
+      '{{FIREBASE_CONFIG_FILE}}':    config.firebase.configFile || 'auto-detected',
+      '{{FIREBASE_ENVIRONMENT}}':    config.firebase.environment || 'default',
+      '{{BITBUCKET_WORKSPACE}}':     config.bitbucket?.workspace || '',
+      '{{BITBUCKET_REPO_SLUG}}':     config.bitbucket?.repoSlug || '',
+      '{{BITBUCKET_TARGET_BRANCH}}': config.bitbucket?.targetBranch || 'develop',
+      '{{BITBUCKET_REVIEWERS}}':     config.bitbucket?.reviewers?.join(', ') || '',
+      '{{BITBUCKET_ENABLED}}':       config.bitbucket?.workspace ? 'enabled' : 'disabled',
+    };
 
-    const defaultChoice = readyExecutors.length > 0 ? '2' : '1';
-    const choice = await this.promptUser(
-      `Select option (1-${options.length})`,
-      defaultChoice
-    );
+    let result = content;
+    for (const [token, value] of Object.entries(replacements)) {
+      result = result.replace(new RegExp(token.replace(/[{}]/g, '\\$&'), 'g'), value ?? '');
+    }
+    return result;
+  }
 
-    const choiceNum = parseInt(choice);
-    if (choiceNum === 1) {
-      this.config.execution.mode = 'generate-only';
-      console.log('📝 Generating workflow file only');
-    } else if (choiceNum >= 2 && choiceNum <= options.length) {
-      this.config.execution.mode = 'cli';
-      this.config.execution.cli = executorMap[choiceNum];
-      const executor = this.aiExecutorFactory.getExecutor(this.config.execution.cli);
-      console.log(`🤖 Will execute with ${executor.displayName}`);
+  /**
+   * Generate all skill files from templates.
+   * Pure function — no file I/O. Returns Map<relativePath, resolvedContent>.
+   */
+  generateSkillFiles(config) {
+    const files = new Map();
+    const tmplDir = path.join(__dirname, 'templates', 'skill');
+
+    const processTemplate = (relPath) => {
+      const tmplPath = path.join(tmplDir, relPath);
+      if (!fs.existsSync(tmplPath)) {
+        throw new Error(`Template not found: ${tmplPath}`);
+      }
+      let content = fs.readFileSync(tmplPath, 'utf8');
+      content = this.resolveConditionals(content, config);
+      return this.resolvePlaceholders(content, config);
+    };
+
+    files.set('SKILL.md',                        processTemplate('SKILL.md.tmpl'));
+    files.set('references/task-templates.md',    processTemplate('references/task-templates.md.tmpl'));
+    files.set('references/platform-patterns.md', processTemplate('references/platform-patterns.md.tmpl'));
+
+    if (config.bitbucket?.workspace) {
+      files.set('references/pr-workflow.md',     processTemplate('references/pr-workflow.md.tmpl'));
+    }
+
+    return files;
+  }
+
+  /**
+   * Write skill directory to one or more target paths.
+   */
+  installSkill(skillFiles, targetDirs, { force = false, dryRun = false } = {}) {
+    const written = [];
+    const SKILL_NAME = 'crash-to-vibe';
+
+    for (const targetDir of targetDirs) {
+      const skillDir = path.join(targetDir, SKILL_NAME);
+
+      if (fs.existsSync(skillDir) && !force) {
+        throw new Error(
+          `Skill already installed at: ${skillDir}\nUse --force to overwrite.`
+        );
+      }
+
+      for (const [rel, content] of skillFiles) {
+        const absPath = path.join(skillDir, rel);
+        if (!dryRun) {
+          fs.mkdirSync(path.dirname(absPath), { recursive: true });
+          fs.writeFileSync(absPath, content, 'utf8');
+        }
+        written.push(absPath);
+      }
+    }
+
+    return written;
+  }
+
+  /**
+   * Build list of target skill parent directories based on CLI flags.
+   */
+  buildTargetDirs(cliArgs) {
+    const base = cliArgs.global ? os.homedir() : process.cwd();
+    const dirs = [path.join(base, '.agents', 'skills')];
+    if (cliArgs.alsoClaude) dirs.push(path.join(base, '.claude', 'skills'));
+    if (cliArgs.alsoGemini) dirs.push(path.join(base, '.gemini', 'skills'));
+    return dirs;
+  }
+
+  printSuccessMessage(targetDirs, writtenPaths, dryRun) {
+    const prefix = dryRun ? '[dry-run] Would write' : 'Installed';
+    console.log(`\n✅ Skill ${dryRun ? 'preview' : 'installed'}!\n`);
+
+    for (const p of writtenPaths) {
+      const rel = path.relative(process.cwd(), p);
+      console.log(`  📄 ${rel}`);
+    }
+
+    if (!dryRun) {
+      const primaryDir = path.relative(process.cwd(), path.join(targetDirs[0], 'crash-to-vibe'));
+      console.log(`\nYour AI agent will auto-activate when you mention crashes or Crashlytics.`);
+      console.log(`Try: "analyze my Firebase crashes for ${this.config.project.name || 'my app'}"`);
+      console.log(`\nNext run: crash-to-vibe --use-last-config`);
     } else {
-      console.log('⚠️  Invalid choice, defaulting to generate-only mode');
-      this.config.execution.mode = 'generate-only';
+      console.log(`\nNo files written (dry run).`);
     }
   }
 
@@ -838,60 +829,6 @@ Supported AI CLIs:
     return apps;
   }
 
-  generateWorkflow() {
-    const template = this.loadTemplate();
-    let workflow = template;
-
-    // Replace placeholders
-    const replacements = {
-      '{{PROJECT_DIR}}': this.config.project.directory,
-      '{{PROJECT_NAME}}': this.config.project.name,
-      '{{PLATFORM}}': this.config.project.platform,
-      '{{FIREBASE_PROJECT_ID}}': this.config.firebase.projectId,
-      '{{APP_ID}}': this.config.firebase.appId,
-      '{{KANBAN_SYSTEM}}': this.config.kanban.system,
-      '{{KANBAN_PROJECT_NAME}}': this.config.kanban.projectName || this.config.project.name,
-      '{{JIRA_CLOUD_ID}}': this.config.jira?.cloudId || 'your-atlassian-cloud-id',
-      '{{JIRA_PROJECT_KEY}}': this.config.jira?.projectKey || 'PROJ',
-      '{{JIRA_ISSUE_TYPE}}': this.config.jira?.issueType || 'Bug',
-      '{{JIRA_LABELS}}': this.config.jira?.labels || 'crash-to-vibe',
-      '{{CRITICAL_CRASHES}}': this.config.thresholds.critical.crashes,
-      '{{HIGH_CRASHES}}': this.config.thresholds.high.crashes,
-      '{{MEDIUM_CRASHES}}': this.config.thresholds.medium.crashes,
-      '{{CRITICAL_USERS}}': this.config.thresholds.critical.users,
-      '{{HIGH_USERS}}': this.config.thresholds.high.users,
-      '{{MEDIUM_USERS}}': this.config.thresholds.medium.users,
-      '{{FIREBASE_CONFIG_FILE}}': this.config.firebase.configFile || 'auto-detected',
-      '{{FIREBASE_ENVIRONMENT}}': this.config.firebase.environment || 'default',
-      '{{BITBUCKET_WORKSPACE}}': this.config.bitbucket?.workspace || 'your-workspace',
-      '{{BITBUCKET_REPO_SLUG}}': this.config.bitbucket?.repoSlug || 'your-repo',
-      '{{BITBUCKET_TARGET_BRANCH}}': this.config.bitbucket?.targetBranch || 'develop',
-      '{{BITBUCKET_REVIEWERS}}': this.config.bitbucket?.reviewers?.join(', ') || 'team-lead',
-      '{{BITBUCKET_ENABLED}}': this.config.bitbucket?.workspace ? 'enabled' : 'disabled'
-    };
-
-    for (const [placeholder, value] of Object.entries(replacements)) {
-      workflow = workflow.replace(new RegExp(placeholder, 'g'), value);
-    }
-
-    return workflow;
-  }
-
-  loadTemplate() {
-    // When installed globally, find template relative to this script
-    const templatePath = path.join(__dirname, 'crashAnalyzer.template.md');
-    if (!fs.existsSync(templatePath)) {
-      throw new Error(`Template file not found: ${templatePath}`);
-    }
-    return fs.readFileSync(templatePath, 'utf8');
-  }
-
-  saveWorkflow(workflow) {
-    // Save to current working directory, not script directory
-    const outputPath = path.join(process.cwd(), 'crashAnalyzer.md');
-    fs.writeFileSync(outputPath, workflow);
-    console.log(`📄 Generated workflow saved to: ${outputPath}`);
-  }
 
   saveConfig() {
     // Save config to script directory for global installs, or current directory for local
@@ -924,19 +861,9 @@ Supported AI CLIs:
       console.log(`✅ Loaded configuration from: ${configPath}`);
       console.log(`📋 Project: ${savedConfig.project.name} (${savedConfig.project.platform})`);
       console.log(`🔥 Firebase: ${savedConfig.firebase.projectId}`);
-      console.log(`🎯 Task System: ${savedConfig.kanban.system}`);
       
       // Merge with current config to preserve defaults and structure
-      this.config = {
-        ...this.config,
-        ...savedConfig,
-        // Preserve execution mode from CLI args if provided
-        execution: this.cliArgs.forceCli
-          ? { mode: 'cli', cli: this.cliArgs.forceCli }
-          : this.cliArgs.generateOnly
-            ? { mode: 'generate-only', cli: null }
-            : savedConfig.execution || this.config.execution
-      };
+      this.config = { ...this.config, ...savedConfig };
       
       return true;
     } catch (error) {
@@ -963,7 +890,8 @@ Supported AI CLIs:
         'project.platform',
         'firebase.projectId',
         'firebase.appId',
-        'kanban.system'
+        'jira.cloudId',
+        'jira.projectKey',
       ];
       
       for (const field of requiredFields) {
@@ -980,27 +908,14 @@ Supported AI CLIs:
       console.log(`✅ Loaded predefined configuration from: ${resolvedPath}`);
       console.log(`📋 Project: ${predefinedConfig.project.name} (${predefinedConfig.project.platform})`);
       console.log(`🔥 Firebase: ${predefinedConfig.firebase.projectId}`);
-      console.log(`🎯 Task System: ${predefinedConfig.kanban.system}`);
-      
-      if (predefinedConfig.kanban.system === 'jira' && predefinedConfig.jira) {
-        console.log(`📊 Jira Project: ${predefinedConfig.jira.projectKey}`);
-      }
-      
+      console.log(`📊 Jira Project: ${predefinedConfig.jira.projectKey}`);
+
       if (predefinedConfig.bitbucket?.workspace) {
         console.log(`🔀 Bitbucket: ${predefinedConfig.bitbucket.workspace}/${predefinedConfig.bitbucket.repoSlug}`);
       }
       
       // Merge with current config to preserve defaults and structure
-      this.config = {
-        ...this.config,
-        ...predefinedConfig,
-        // Preserve execution mode from CLI args if provided
-        execution: this.cliArgs.forceCli
-          ? { mode: 'cli', cli: this.cliArgs.forceCli }
-          : this.cliArgs.generateOnly
-            ? { mode: 'generate-only', cli: null }
-            : predefinedConfig.execution || this.config.execution
-      };
+      this.config = { ...this.config, ...predefinedConfig };
       
       return true;
     } catch (error) {
@@ -1011,143 +926,48 @@ Supported AI CLIs:
     }
   }
 
-  /**
-   * Execute the workflow with selected AI CLI
-   * @param {string} workflowPath - Path to the generated workflow file
-   * @returns {Promise<void>}
-   */
-  async executeWorkflow(workflowPath) {
-    if (this.config.execution.mode !== 'cli' || !this.config.execution.cli) {
-      return;
-    }
-
-    const executor = this.aiExecutorFactory.getExecutor(this.config.execution.cli);
-    if (!executor) {
-      console.error(`❌ Executor not found: ${this.config.execution.cli}`);
-      process.exit(2);
-    }
-
-    console.log(`\n${'='.repeat(60)}`);
-    console.log(`🚀 Starting AI CLI Execution`);
-    console.log(`${'='.repeat(60)}\n`);
-
-    // Create log file
-    const logPath = path.join(process.cwd(), 'crashAnalyzer.execution.log');
-    const logStream = fs.createWriteStream(logPath, { flags: 'w' });
-    
-    logStream.write(`Crash Analyzer Execution Log\n`);
-    logStream.write(`Generated: ${new Date().toISOString()}\n`);
-    logStream.write(`AI CLI: ${executor.displayName}\n`);
-    logStream.write(`Workflow: ${workflowPath}\n`);
-    logStream.write(`${'='.repeat(60)}\n\n`);
-
-    try {
-      const result = executor.execute(workflowPath);
-      
-      if (result.success) {
-        logStream.write('Status: SUCCESS\n');
-        if (result.output) {
-          logStream.write(`\nOutput:\n${result.output}\n`);
-        }
-        logStream.end();
-        
-        console.log(`\n${'='.repeat(60)}`);
-        console.log('✅ Workflow executed successfully!');
-        console.log(`${'='.repeat(60)}\n`);
-        console.log(`📝 Execution log saved to: ${logPath}`);
-      } else {
-        logStream.write('Status: FAILED\n');
-        if (result.error) {
-          logStream.write(`\nError:\n${result.error}\n`);
-        }
-        logStream.end();
-        
-        console.log(`\n${'='.repeat(60)}`);
-        console.error('❌ Workflow execution failed');
-        console.log(`${'='.repeat(60)}\n`);
-        console.error('Error:', result.error);
-        console.log(`\n📝 Execution log saved to: ${logPath}`);
-        process.exit(2);
-      }
-    } catch (error) {
-      logStream.write(`Status: ERROR\n`);
-      logStream.write(`\nException:\n${error.message}\n${error.stack}\n`);
-      logStream.end();
-      
-      console.error('\n❌ Unexpected error during execution:', error.message);
-      console.log(`📝 Execution log saved to: ${logPath}`);
-      process.exit(2);
-    }
-  }
 
   async run() {
     try {
-      // Show help if requested
       if (this.cliArgs.help) {
         this.showHelp();
         process.exit(0);
       }
 
-      // Load predefined config, last config, or collect new configuration
+      // Load config: predefined file → last saved → interactive
       if (this.cliArgs.configFile) {
-        // Priority 1: Predefined config file (for team sharing)
         console.log('📦 Loading predefined configuration...\n');
         this.loadPredefinedConfig(this.cliArgs.configFile);
-        
-        // Only select execution mode if not specified via CLI flags
-        if (!this.cliArgs.forceCli && !this.cliArgs.generateOnly) {
-          await this.selectExecutionMode();
-        } else {
-          console.log(`📝 Execution mode: ${this.config.execution.mode}`);
-        }
       } else if (this.cliArgs.useLastConfig) {
-        // Priority 2: Last saved config
         console.log('🔄 Using last saved configuration...\n');
         this.loadLastConfig();
-        
-        // Only select execution mode if not specified via CLI flags
-        if (!this.cliArgs.forceCli && !this.cliArgs.generateOnly) {
-          await this.selectExecutionMode();
-        } else {
-          console.log(`📝 Execution mode: ${this.config.execution.mode}`);
-        }
       } else {
-        // Priority 3: Interactive configuration
-        // Collect configuration
         await this.collectConfiguration();
-        
-        // Select execution mode
-        await this.selectExecutionMode();
       }
-      
-      // Generate workflow
-      const workflow = this.generateWorkflow();
-      this.saveWorkflow(workflow);
-      this.saveConfig();
-      
-      const workflowPath = path.join(process.cwd(), 'crashAnalyzer.md');
-      
-      console.log('\n🎉 Success! Your crash analyzer workflow has been generated.');
-      console.log(`📄 Workflow file: ${workflowPath}`);
-      
-      // Execute if requested
-      if (this.config.execution.mode === 'cli') {
-        await this.executeWorkflow(workflowPath);
-      } else {
-        console.log('\n📋 Next steps:');
-        console.log('1. Review the generated crashAnalyzer.md file');
-        console.log('2. Update any project-specific details as needed');
-        console.log('3. Run the workflow with your AI assistant manually');
-        console.log('\n💡 Tip: Use --cli <name> to execute automatically next time');
+
+      // Generate skill files (pure, no I/O)
+      console.log('\n⚙️  Generating crash-to-vibe skill...');
+      const skillFiles = this.generateSkillFiles(this.config);
+
+      // Determine install targets
+      const targetDirs = this.buildTargetDirs(this.cliArgs);
+
+      // Install (or dry-run)
+      const written = this.installSkill(skillFiles, targetDirs, {
+        force: this.cliArgs.force,
+        dryRun: this.cliArgs.dryRun,
+      });
+
+      // Persist config for --use-last-config
+      if (!this.cliArgs.dryRun) {
+        this.saveConfig();
       }
-      
+
+      this.printSuccessMessage(targetDirs, written, this.cliArgs.dryRun);
       process.exit(0);
-      
+
     } catch (error) {
       console.error('❌ Error:', error.message);
-      if (error.stack) {
-        console.error('Stack trace:', error.stack);
-      }
       process.exit(1);
     } finally {
       rl.close();
