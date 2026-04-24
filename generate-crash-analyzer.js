@@ -93,9 +93,9 @@ class CrashAnalyzerGenerator {
 Usage: crash-to-vibe [options]
 
 Zero-config global mode (install once, use everywhere):
-  --zero-config       Install global skill to all CLI skill dirs (~/.claude/skills/,
-                      ~/.gemini/skills/, ~/.agents/skills/) — no baked-in config,
-                      reads crash-to-vibe.json from your project root at runtime
+  --zero-config       Install global skill to all known CLI skill dirs (Claude Code,
+                      Gemini, Codex, Copilot, Cursor, Cline, Kiro, Antigravity, Amp,
+                      OpenCode, ~/.agents/skills/) — reads crash-to-vibe.json at runtime
   --init-project      Create crash-to-vibe.json in current directory (Jira config)
 
 Per-project mode (bakes config into skill):
@@ -809,7 +809,7 @@ Firebase Crashlytics. Supports Claude Code, Gemini CLI, Codex, GitHub Copilot.
 
     if (!dryRun) {
       if (zeroConfig) {
-        console.log(`\nGlobal skill installed for: Claude Code, Gemini CLI, Codex, Copilot, Amp`);
+        console.log(`\nGlobal skill installed for: Claude Code, Gemini, Codex, Copilot, Cursor, Cline, Kiro, Antigravity, Amp, OpenCode`);
         console.log(`\nNext steps:`);
         console.log(`  1. In each mobile project, run: crash-to-vibe --init-project`);
         console.log(`  2. Open Claude Code (or Gemini CLI / Copilot) in your project and say:`);
@@ -1032,9 +1032,17 @@ Firebase Crashlytics. Supports Claude Code, Gemini CLI, Codex, GitHub Copilot.
         // Install to every known global skill directory so all CLIs pick it up
         const home = os.homedir();
         const dirs = [
-          path.join(home, '.claude', 'skills'),     // Claude Code
-          path.join(home, '.gemini', 'skills'),     // Gemini CLI
-          path.join(home, '.agents', 'skills'),     // Agent Skills standard (Copilot, Codex, Amp)
+          path.join(home, '.claude', 'skills'),           // Claude Code
+          path.join(home, '.gemini', 'skills'),           // Gemini CLI
+          path.join(home, '.codex', 'skills'),            // OpenAI Codex CLI
+          path.join(home, '.copilot', 'skills'),          // GitHub Copilot CLI
+          path.join(home, '.cursor', 'skills'),           // Cursor
+          path.join(home, '.cline', 'skills'),            // Cline
+          path.join(home, '.kiro', 'skills'),             // Kiro (AWS)
+          path.join(home, '.antigravity', 'skills'),      // Antigravity
+          path.join(home, '.config', 'amp', 'skills'),    // Amp (Sourcegraph)
+          path.join(home, '.config', 'opencode', 'skills'), // OpenCode
+          path.join(home, '.agents', 'skills'),           // Agent Skills standard
         ];
 
         const written = this.installSkill(skillFiles, dirs, {

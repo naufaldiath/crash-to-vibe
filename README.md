@@ -7,7 +7,7 @@ Installs an [Agent Skills](https://agentskills.io) skill that auto-activates Fir
 ## ✨ Features
 
 - **🤖 AI Auto-Activation**: Skill auto-loads when you mention crashes or Crashlytics — no manual file passing
-- **🌐 Cross-Client**: Works in Claude Code, Gemini CLI, Codex, GitHub Copilot (Agent Skills standard)
+- **🌐 Cross-Client**: Works in Claude Code, Gemini CLI, Codex, Copilot, Cursor, Cline, Kiro, Antigravity, Amp, OpenCode (Agent Skills standard)
 - **📱 Multi-Platform**: Android, iOS, Flutter
 - **🎯 Jira Integration**: Creates prioritized issues via Atlassian MCP with real stacktraces
 - **🔀 Bitbucket PRs** (optional): Auto-creates pull requests after AI fixes
@@ -71,8 +71,7 @@ npm link
 crash-to-vibe [options]
 
 Zero-config global mode:
-  --zero-config       Install global skill to all CLI skill dirs: ~/.claude/skills/,
-                      ~/.gemini/skills/, ~/.agents/skills/ (no baked-in config)
+  --zero-config       Install global skill to all known CLI skill dirs (no baked-in config)
   --init-project      Create crash-to-vibe.json in current directory
 
 Per-project mode:
