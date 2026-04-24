@@ -1,33 +1,32 @@
 #!/usr/bin/env node
 'use strict';
 
-// Skip hint in CI environments
+// Skip in CI / local installs
 if (process.env.CI || process.env.CONTINUOUS_INTEGRATION || process.env.npm_config_global === 'false') {
   process.exit(0);
 }
 
-console.log(`
+// Write to stderr — npm always shows stderr regardless of log level
+process.stderr.write(`
 ╔══════════════════════════════════════════════════════════╗
-║           crash-to-vibe installed globally!              ║
+║           crash-to-vibe installed!                       ║
 ╚══════════════════════════════════════════════════════════╝
 
-To use the zero-config global skill (auto-installs to ~/.agents/skills/):
+Get started in your mobile project:
 
-  1. Run once to install the global skill:
-       crash-to-vibe --zero-config
-
-  2. In each mobile project, create a crash-to-vibe.json:
-       crash-to-vibe --init-project
-
-  3. Open Claude Code (or Gemini CLI / Copilot) in your project and say:
-       "analyze my Firebase crashes and create Jira issues"
-
-The skill auto-activates — no manual file passing needed.
-
-Full per-project setup (bakes in all config):
+  cd /path/to/your/mobile/project
   crash-to-vibe
 
+This will:
+  1. Install the skill to all AI CLI tools on your machine
+     (Claude Code, Gemini, Codex, Copilot, Cursor, Cline, and more)
+  2. Create crash-to-vibe.json for this project (Jira config)
+
+Then open your AI agent and say:
+  "analyze my Firebase crashes and create Jira issues"
+
 Run crash-to-vibe --help for all options.
+
 `);
 
 process.exit(0);
