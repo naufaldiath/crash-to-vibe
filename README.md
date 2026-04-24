@@ -16,38 +16,20 @@ Installs an [Agent Skills](https://agentskills.io) skill that auto-activates Fir
 
 ## 🚀 Quick Start
 
-### Option A — Zero-config global (recommended for teams)
-
-Install once, works in every mobile project:
-
 ```bash
 # 1. Install globally
 npm install -g crash-to-vibe
 
-# 2. Install the global skill (once per machine)
-crash-to-vibe --zero-config
-
-# 3. In each mobile project, create crash-to-vibe.json
-cd /path/to/your/mobile/project
-crash-to-vibe --init-project
-```
-
-Then open Claude Code (or Gemini CLI, Copilot) in your project and say:
-
-> "Analyze my Firebase crashes and create Jira issues"
-
-### Option B — Per-project (bakes config into skill)
-
-```bash
-# 1. Install globally
-npm install -g crash-to-vibe
-
-# 2. Run in your mobile project
+# 2. Run in your mobile project (installs global skill + creates crash-to-vibe.json)
 cd /path/to/your/mobile/project
 crash-to-vibe
 ```
 
-Answers a few prompts (Firebase project, Jira details), then installs the skill into `.agents/skills/crash-to-vibe/`.
+That's it. Open Claude Code (or Gemini CLI, Copilot, Cursor, Codex…) in your project and say:
+
+> "Analyze my Firebase crashes and create Jira issues"
+
+The skill auto-activates — no extra setup needed.
 
 ## 📦 Installation Options
 
@@ -70,32 +52,28 @@ npm link
 ```
 crash-to-vibe [options]
 
-Zero-config global mode:
-  --zero-config       Install global skill to all known CLI skill dirs (no baked-in config)
-  --init-project      Create crash-to-vibe.json in current directory
+Default (no flags):
+  Install global skill to all known CLI skill dirs, then offer to create
+  crash-to-vibe.json in the current project.
 
-Per-project mode:
-  --use-last-config   Skip prompts, reuse last saved configuration
-  --config <file>     Load predefined config file (for team sharing)
-  --global            Install to ~/.agents/skills/ (works in all projects)
-  --force             Overwrite existing skill installation
+  --init-project      Only create crash-to-vibe.json in current directory
+  --configure         Per-project mode: bake Firebase + Jira config into skill
+  --use-last-config   (with --configure) reuse last saved configuration
+  --config <file>     (with --configure) load predefined team config file
+  --force             Overwrite existing skill installations
   --dry-run           Preview files to be written without writing
-  --also-claude       Also install to .claude/skills/
-  --also-gemini       Also install to .gemini/skills/
   --help, -h          Show this help
 ```
 
 ### Examples
 
 ```bash
-crash-to-vibe --zero-config             # Install global zero-config skill (once)
-crash-to-vibe --init-project            # Create crash-to-vibe.json in project root
-crash-to-vibe                           # Interactive per-project setup
-crash-to-vibe --use-last-config         # Reinstall with saved config
-crash-to-vibe --config team.json        # Use team's shared config
+crash-to-vibe                           # Default: install global skill + init project
+crash-to-vibe --init-project            # Only create crash-to-vibe.json here
 crash-to-vibe --dry-run                 # Preview what would be installed
-crash-to-vibe --force                   # Overwrite existing installation
-crash-to-vibe --global --also-claude    # Install globally + .claude/skills/
+crash-to-vibe --force                   # Overwrite existing installations
+crash-to-vibe --configure               # Per-project setup (bakes in config)
+crash-to-vibe --configure --config team.json
 ```
 
 ## 📁 Installed Skill Structure

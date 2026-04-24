@@ -43,27 +43,21 @@ class CrashAnalyzerGenerator {
   parseCliArgs() {
     const args = process.argv.slice(2);
     const parsed = {
-      global: false,
+      configure: false,
       force: false,
       dryRun: false,
-      alsoClaude: false,
-      alsoGemini: false,
       useLastConfig: false,
       configFile: null,
-      zeroConfig: false,
       initProject: false,
       help: false,
     };
 
     for (let i = 0; i < args.length; i++) {
       switch (args[i]) {
-        case '--global':          parsed.global = true; break;
+        case '--configure':       parsed.configure = true; break;
         case '--force':           parsed.force = true; break;
         case '--dry-run':         parsed.dryRun = true; break;
-        case '--also-claude':     parsed.alsoClaude = true; break;
-        case '--also-gemini':     parsed.alsoGemini = true; break;
         case '--use-last-config': parsed.useLastConfig = true; break;
-        case '--zero-config':     parsed.zeroConfig = true; break;
         case '--init-project':    parsed.initProject = true; break;
         case '--help': case '-h': parsed.help = true; break;
         case '--config':
@@ -76,6 +70,12 @@ class CrashAnalyzerGenerator {
         case '--cli':
           console.warn('Warning: --cli removed in v2. AI agents auto-activate from the installed skill.');
           if (args[i + 1] && !args[i + 1].startsWith('--')) i++;
+          break;
+        case '--zero-config':
+        case '--global':
+        case '--also-claude':
+        case '--also-gemini':
+          // Previously separate flags — now default behavior, silently accepted
           break;
       }
     }
@@ -92,35 +92,31 @@ class CrashAnalyzerGenerator {
 
 Usage: crash-to-vibe [options]
 
-Zero-config global mode (install once, use everywhere):
-  --zero-config       Install global skill to all known CLI skill dirs (Claude Code,
-                      Gemini, Codex, Copilot, Cursor, Cline, Kiro, Antigravity, Amp,
-                      OpenCode, ~/.agents/skills/) — reads crash-to-vibe.json at runtime
-  --init-project      Create crash-to-vibe.json in current directory (Jira config)
+Default (no flags):
+  Installs the global zero-config skill to all known AI CLI skill dirs, then
+  offers to create crash-to-vibe.json in the current project.
 
-Per-project mode (bakes config into skill):
-  --use-last-config   Skip prompts, reuse last saved configuration
-  --config <file>     Load predefined config file (for team sharing)
-  --global            Install to ~/.agents/skills/ instead of ./.agents/skills/
-  --force             Overwrite existing skill installation
+Options:
+  --init-project      Only create crash-to-vibe.json in current directory
+  --configure         Per-project mode: bake Firebase + Jira config into skill
+  --use-last-config   (with --configure) reuse last saved configuration
+  --config <file>     (with --configure) load predefined team config file
+  --force             Overwrite existing skill installations
   --dry-run           Preview files to be written without writing
-  --also-claude       Also install to .claude/skills/
-  --also-gemini       Also install to .gemini/skills/
-
   --help, -h          Show this help
 
 Examples:
-  crash-to-vibe --zero-config             # Install global zero-config skill (once)
-  crash-to-vibe --init-project            # Create crash-to-vibe.json in project root
-  crash-to-vibe                           # Interactive per-project setup
-  crash-to-vibe --use-last-config         # Reinstall with saved config
-  crash-to-vibe --config team.json        # Use team's shared config
-  crash-to-vibe --dry-run                 # Preview what would be installed
-  crash-to-vibe --force                   # Overwrite existing installation
-  crash-to-vibe --global --also-claude    # Install globally + .claude/skills/
+  crash-to-vibe                        # Install global skill + init current project
+  crash-to-vibe --init-project         # Only create crash-to-vibe.json here
+  crash-to-vibe --dry-run              # Preview what would be installed
+  crash-to-vibe --force                # Overwrite existing installations
+  crash-to-vibe --configure            # Per-project setup (bakes in config)
+  crash-to-vibe --configure --config team.json
 
-After installation your AI agent auto-activates when you mention crashes or
-Firebase Crashlytics. Supports Claude Code, Gemini CLI, Codex, GitHub Copilot.
+Installs skill to: ~/.claude/skills/, ~/.gemini/skills/, ~/.codex/skills/,
+  ~/.copilot/skills/, ~/.cursor/skills/, ~/.cline/skills/, ~/.kiro/skills/,
+  ~/.antigravity/skills/, ~/.config/amp/skills/, ~/.config/opencode/skills/,
+  ~/.agents/skills/
 `);
   }
 
@@ -1012,6 +1008,23 @@ Firebase Crashlytics. Supports Claude Code, Gemini CLI, Codex, GitHub Copilot.
   }
 
 
+  buildZeroConfigDirs() {
+    const home = os.homedir();
+    return [
+      path.join(home, '.claude', 'skills'),             // Claude Code
+      path.join(home, '.gemini', 'skills'),             // Gemini CLI
+      path.join(home, '.codex', 'skills'),              // OpenAI Codex CLI
+      path.join(home, '.copilot', 'skills'),            // GitHub Copilot CLI
+      path.join(home, '.cursor', 'skills'),             // Cursor
+      path.join(home, '.cline', 'skills'),              // Cline
+      path.join(home, '.kiro', 'skills'),               // Kiro (AWS)
+      path.join(home, '.antigravity', 'skills'),        // Antigravity
+      path.join(home, '.config', 'amp', 'skills'),      // Amp (Sourcegraph)
+      path.join(home, '.config', 'opencode', 'skills'), // OpenCode
+      path.join(home, '.agents', 'skills'),             // Agent Skills standard
+    ];
+  }
+
   async run() {
     try {
       if (this.cliArgs.help) {
@@ -1019,66 +1032,65 @@ Firebase Crashlytics. Supports Claude Code, Gemini CLI, Codex, GitHub Copilot.
         process.exit(0);
       }
 
-      // --init-project: create crash-to-vibe.json in cwd
+      // --init-project: only create crash-to-vibe.json, nothing else
       if (this.cliArgs.initProject) {
         await this.initProject();
         process.exit(0);
       }
 
-      // --zero-config: install static global skill to all known CLI skill dirs
-      if (this.cliArgs.zeroConfig) {
-        console.log('⚙️  Installing zero-config global skill...');
-        const skillFiles = this.generateZeroConfigSkillFiles();
-        // Install to every known global skill directory so all CLIs pick it up
-        const home = os.homedir();
-        const dirs = [
-          path.join(home, '.claude', 'skills'),           // Claude Code
-          path.join(home, '.gemini', 'skills'),           // Gemini CLI
-          path.join(home, '.codex', 'skills'),            // OpenAI Codex CLI
-          path.join(home, '.copilot', 'skills'),          // GitHub Copilot CLI
-          path.join(home, '.cursor', 'skills'),           // Cursor
-          path.join(home, '.cline', 'skills'),            // Cline
-          path.join(home, '.kiro', 'skills'),             // Kiro (AWS)
-          path.join(home, '.antigravity', 'skills'),      // Antigravity
-          path.join(home, '.config', 'amp', 'skills'),    // Amp (Sourcegraph)
-          path.join(home, '.config', 'opencode', 'skills'), // OpenCode
-          path.join(home, '.agents', 'skills'),           // Agent Skills standard
-        ];
+      // --configure: per-project mode (bakes Firebase + Jira config into skill)
+      if (this.cliArgs.configure) {
+        if (this.cliArgs.configFile) {
+          console.log('📦 Loading predefined configuration...\n');
+          this.loadPredefinedConfig(this.cliArgs.configFile);
+        } else if (this.cliArgs.useLastConfig) {
+          console.log('🔄 Using last saved configuration...\n');
+          this.loadLastConfig();
+        } else {
+          await this.collectConfiguration();
+        }
 
-        const written = this.installSkill(skillFiles, dirs, {
+        console.log('\n⚙️  Generating crash-to-vibe skill...');
+        const skillFiles = this.generateSkillFiles(this.config);
+        const targetDirs = this.buildTargetDirs(this.cliArgs);
+
+        const written = this.installSkill(skillFiles, targetDirs, {
           force: this.cliArgs.force,
           dryRun: this.cliArgs.dryRun,
         });
 
-        this.printSuccessMessage(dirs, written, this.cliArgs.dryRun, true);
+        if (!this.cliArgs.dryRun) this.saveConfig();
+        this.printSuccessMessage(targetDirs, written, this.cliArgs.dryRun, false);
         process.exit(0);
       }
 
-      // Per-project mode: load config → generate → install
-      if (this.cliArgs.configFile) {
-        console.log('📦 Loading predefined configuration...\n');
-        this.loadPredefinedConfig(this.cliArgs.configFile);
-      } else if (this.cliArgs.useLastConfig) {
-        console.log('🔄 Using last saved configuration...\n');
-        this.loadLastConfig();
-      } else {
-        await this.collectConfiguration();
-      }
+      // Default: install global zero-config skill, then offer --init-project
+      console.log('⚙️  Installing global skill...');
+      const skillFiles = this.generateZeroConfigSkillFiles();
+      const dirs = this.buildZeroConfigDirs();
 
-      console.log('\n⚙️  Generating crash-to-vibe skill...');
-      const skillFiles = this.generateSkillFiles(this.config);
-      const targetDirs = this.buildTargetDirs(this.cliArgs);
-
-      const written = this.installSkill(skillFiles, targetDirs, {
+      const written = this.installSkill(skillFiles, dirs, {
         force: this.cliArgs.force,
         dryRun: this.cliArgs.dryRun,
       });
 
+      this.printSuccessMessage(dirs, written, this.cliArgs.dryRun, true);
+
+      // Offer to init crash-to-vibe.json in current project
       if (!this.cliArgs.dryRun) {
-        this.saveConfig();
+        const projectConfigPath = path.join(process.cwd(), 'crash-to-vibe.json');
+        if (!fs.existsSync(projectConfigPath)) {
+          const doInit = await this.promptUser(
+            '\nSet up crash-to-vibe.json for the current project now? (Y/n)', 'Y'
+          );
+          if (doInit.toLowerCase() !== 'n') {
+            await this.initProject();
+          }
+        } else {
+          console.log(`\ncrash-to-vibe.json already exists in this project.`);
+        }
       }
 
-      this.printSuccessMessage(targetDirs, written, this.cliArgs.dryRun, false);
       process.exit(0);
 
     } catch (error) {

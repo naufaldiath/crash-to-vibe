@@ -1,6 +1,6 @@
 {
   "name": "crash-to-vibe",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Installs an Agent Skills skill that auto-activates Firebase Crashlytics crash analysis and task creation in Claude Code, Gemini CLI, Codex, and GitHub Copilot",
   "main": "generate-crash-analyzer.js",
   "bin": {
