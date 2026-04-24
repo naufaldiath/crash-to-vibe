@@ -1,0 +1,19 @@
+{
+  "jira": {
+    "cloudId": "your-company.atlassian.net",
+    "projectKey": "PROJ",
+    "issueType": "Bug",
+    "labels": "crash-to-vibe"
+  },
+  "bitbucket": {
+    "workspace": "your-workspace",
+    "repoSlug": "your-repo-slug",
+    "targetBranch": "develop",
+    "reviewers": []
+  },
+  "thresholds": {
+    "critical": { "crashes": 800, "users": 600 },
+    "high":     { "crashes": 400, "users": 300 },
+    "medium":   { "crashes": 100, "users": 50 }
+  }
+}

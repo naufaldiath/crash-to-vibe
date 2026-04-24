@@ -8,37 +8,46 @@ Installs an [Agent Skills](https://agentskills.io) skill that auto-activates Fir
 
 - **🤖 AI Auto-Activation**: Skill auto-loads when you mention crashes or Crashlytics — no manual file passing
 - **🌐 Cross-Client**: Works in Claude Code, Gemini CLI, Codex, GitHub Copilot (Agent Skills standard)
-- **🔍 Smart Auto-Detection**: Recursively discovers Firebase config files up to 10 levels deep
 - **📱 Multi-Platform**: Android, iOS, Flutter
-- **🌍 Multi-Environment**: Production, Development, Staging environments
 - **🎯 Jira Integration**: Creates prioritized issues via Atlassian MCP with real stacktraces
 - **🔀 Bitbucket PRs** (optional): Auto-creates pull requests after AI fixes
 - **⚙️ Configurable Thresholds**: CRITICAL / HIGH / MEDIUM / LOW crash priority classification
+- **🌍 Zero-config global mode**: Install once, works across all projects via `crash-to-vibe.json`
 
 ## 🚀 Quick Start
 
-### 1. Install
+### Option A — Zero-config global (recommended for teams)
+
+Install once, works in every mobile project:
 
 ```bash
+# 1. Install globally
 npm install -g crash-to-vibe
+
+# 2. Install the global skill (once per machine)
+crash-to-vibe --zero-config
+
+# 3. In each mobile project, create crash-to-vibe.json
+cd /path/to/your/mobile/project
+crash-to-vibe --init-project
 ```
 
-### 2. Run in your mobile project
+Then open Claude Code (or Gemini CLI, Copilot) in your project and say:
+
+> "Analyze my Firebase crashes and create Jira issues"
+
+### Option B — Per-project (bakes config into skill)
 
 ```bash
+# 1. Install globally
+npm install -g crash-to-vibe
+
+# 2. Run in your mobile project
 cd /path/to/your/mobile/project
 crash-to-vibe
 ```
 
 Answers a few prompts (Firebase project, Jira details), then installs the skill into `.agents/skills/crash-to-vibe/`.
-
-### 3. Use in your AI agent
-
-Open Claude Code (or Gemini CLI, Codex, Copilot) in the same project and say:
-
-> "Analyze my Firebase crashes and create Jira issues"
-
-The skill auto-activates — no extra setup needed.
 
 ## 📦 Installation Options
 
@@ -61,7 +70,11 @@ npm link
 ```
 crash-to-vibe [options]
 
-Options:
+Zero-config global mode:
+  --zero-config       Install global skill to ~/.agents/skills/ (no baked-in config)
+  --init-project      Create crash-to-vibe.json in current directory
+
+Per-project mode:
   --use-last-config   Skip prompts, reuse last saved configuration
   --config <file>     Load predefined config file (for team sharing)
   --global            Install to ~/.agents/skills/ (works in all projects)
@@ -75,8 +88,9 @@ Options:
 ### Examples
 
 ```bash
-crash-to-vibe                           # Interactive setup, install locally
-crash-to-vibe --global                  # Install to ~/.agents/skills/ (all projects)
+crash-to-vibe --zero-config             # Install global zero-config skill (once)
+crash-to-vibe --init-project            # Create crash-to-vibe.json in project root
+crash-to-vibe                           # Interactive per-project setup
 crash-to-vibe --use-last-config         # Reinstall with saved config
 crash-to-vibe --config team.json        # Use team's shared config
 crash-to-vibe --dry-run                 # Preview what would be installed
@@ -174,7 +188,30 @@ Issues are classified by crash volume over the ~8-day Crashlytics reporting wind
 
 Thresholds are configurable during setup or via config file.
 
-## 🤝 Team Configuration
+## 📋 crash-to-vibe.json (Zero-config per-project file)
+
+For the zero-config global skill, commit this file to each mobile project root:
+
+```bash
+crash-to-vibe --init-project    # interactive creation
+```
+
+Minimal `crash-to-vibe.json`:
+
+```json
+{
+  "jira": {
+    "cloudId": "your-company.atlassian.net",
+    "projectKey": "PROJ",
+    "issueType": "Bug",
+    "labels": "crash-to-vibe"
+  }
+}
+```
+
+See `crash-to-vibe.example.json` for full reference including Bitbucket and custom thresholds.
+
+## 🤝 Team Configuration (Per-project mode)
 
 Share a `team-config.json` so teammates skip interactive prompts:
 

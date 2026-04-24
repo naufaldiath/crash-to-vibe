@@ -4,7 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CLI tool that generates AI-powered Firebase Crashlytics → Task Management automation workflows. Detects Firebase config files recursively, supports Android/iOS/Flutter, and outputs a `crashAnalyzer.md` workflow file optimized for AI agent execution.
+CLI tool that installs AI-powered Firebase Crashlytics → Jira automation as [Agent Skills](https://agentskills.io). Two modes:
+
+- **Per-project** (v2): bakes Firebase + Jira config into skill at install time
+- **Zero-config global** (v2.1): static global skill, reads `crash-to-vibe.json` from project root at runtime
 
 Uses **Jira** (via Atlassian MCP) as the only task management system.
 
@@ -20,7 +23,11 @@ npm link                               # Create global symlink
 crash-to-vibe                          # Test globally
 npm unlink -g crash-to-vibe            # Remove symlink
 
-# CLI flags
+# CLI flags — zero-config mode
+crash-to-vibe --zero-config            # Install global static skill to ~/.agents/skills/
+crash-to-vibe --init-project           # Create crash-to-vibe.json in current project
+
+# CLI flags — per-project mode
 crash-to-vibe --use-last-config        # Reuse saved config, skip prompts
 crash-to-vibe --config team.json       # Load predefined team config
 crash-to-vibe --global                 # Install to ~/.agents/skills/ (all projects)
@@ -33,7 +40,7 @@ crash-to-vibe --help
 
 ## Architecture
 
-Single-file tool: all logic in `generate-crash-analyzer.js` (CrashAnalyzerGenerator class). AI executor classes in `ai-executors.js` (kept for future use). Source templates in `templates/skill/`.
+Single-file tool: all logic in `generate-crash-analyzer.js` (CrashAnalyzerGenerator class). AI executor classes in `ai-executors.js` (kept for future use). Source templates in `templates/skill/` (per-project) and `templates/skill-zero-config/` (zero-config, static).
 
 ### Output: Agent Skills directory
 
@@ -56,6 +63,20 @@ crash-to-vibe/
     └── pr-workflow.md               # Bitbucket PR workflow (only if bitbucket configured)
 ```
 
+### Zero-config path (`--zero-config` / `--init-project`)
+
+`--zero-config`: copies `templates/skill-zero-config/` (all 4 files) to `~/.agents/skills/crash-to-vibe/`. No placeholder resolution — files are static. AI discovers Firebase via MCP at runtime; reads Jira config from `crash-to-vibe.json` found by walking up from CWD.
+
+`--init-project`: interactive prompts create `crash-to-vibe.json` in CWD. Minimal schema:
+```json
+{
+  "jira": { "cloudId": "", "projectKey": "", "issueType": "Bug", "labels": "crash-to-vibe" },
+  "bitbucket": { ... },   // optional
+  "thresholds": { ... }   // optional
+}
+```
+See `crash-to-vibe.example.json` for full reference.
+
 ### CrashAnalyzerGenerator responsibilities
 
 1. **Project detection** (`detectProjectInfo`, `findFirebaseConfigFiles`) — recursive search up to 10 levels, skips node_modules/.git/build/Pods, parses google-services.json (JSON) and GoogleService-Info.plist (regex on XML)
@@ -66,15 +87,19 @@ crash-to-vibe/
 
 4. **Skill generation** (`generateSkillFiles`) — pure function, returns `Map<relativePath, content>`. Calls `resolveConditionals` then `resolvePlaceholders` on each template file.
 
-5. **Conditional resolution** (`resolveConditionals`) — processes `{{#if (eq VAR "VALUE")}}...{{/if}}` at generation time using `TEMPLATE_VAR_MAP`. Bare `{{#if signal}}` blocks (runtime signals) are left as prose in templates.
+5. **Zero-config skill generation** (`generateZeroConfigSkillFiles`) — pure function, static copy of `templates/skill-zero-config/`, no token resolution.
 
-6. **Placeholder resolution** (`resolvePlaceholders`) — replaces `{{TOKEN}}` tokens with config values
+6. **Project init** (`initProject`) — interactive prompts, writes `crash-to-vibe.json` to CWD.
 
-7. **Skill installation** (`installSkill`, `buildTargetDirs`) — writes skill directory to target paths; throws if exists without `--force`
+7. **Conditional resolution** (`resolveConditionals`) — processes `{{#if (eq VAR "VALUE")}}...{{/if}}` at generation time using `TEMPLATE_VAR_MAP`. Bare `{{#if signal}}` blocks (runtime signals) are left as prose in templates.
+
+8. **Placeholder resolution** (`resolvePlaceholders`) — replaces `{{TOKEN}}` tokens with config values
+
+9. **Skill installation** (`installSkill`, `buildTargetDirs`) — writes skill directory to target paths; throws if exists without `--force`
 
 ### Source templates
 
-`templates/skill/` — source files processed at generation time:
+`templates/skill/` — per-project, processed at generation time:
 
 | File | Content |
 |---|---|
@@ -82,6 +107,15 @@ crash-to-vibe/
 | `references/task-templates.md.tmpl` | CRITICAL/HIGH/PERFORMANCE/MONITORING task templates |
 | `references/platform-patterns.md.tmpl` | Android/iOS/Flutter crash pattern guide |
 | `references/pr-workflow.md.tmpl` | Bitbucket PR creation + merge workflow |
+
+`templates/skill-zero-config/` — static files, copied as-is for `--zero-config`:
+
+| File | Content |
+|---|---|
+| `SKILL.md` | Runtime discovery workflow (reads crash-to-vibe.json, uses Firebase MCP) |
+| `references/task-templates.md` | Same templates with `[JIRA_PROJECT_KEY]`-style runtime placeholders |
+| `references/platform-patterns.md` | All 3 platforms listed; AI picks based on detected files |
+| `references/pr-workflow.md` | PR workflow with runtime placeholders |
 
 ### Template tokens
 

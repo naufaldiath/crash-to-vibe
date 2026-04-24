@@ -50,6 +50,8 @@ class CrashAnalyzerGenerator {
       alsoGemini: false,
       useLastConfig: false,
       configFile: null,
+      zeroConfig: false,
+      initProject: false,
       help: false,
     };
 
@@ -61,6 +63,8 @@ class CrashAnalyzerGenerator {
         case '--also-claude':     parsed.alsoClaude = true; break;
         case '--also-gemini':     parsed.alsoGemini = true; break;
         case '--use-last-config': parsed.useLastConfig = true; break;
+        case '--zero-config':     parsed.zeroConfig = true; break;
+        case '--init-project':    parsed.initProject = true; break;
         case '--help': case '-h': parsed.help = true; break;
         case '--config':
           if (args[i + 1]) { parsed.configFile = args[++i]; }
@@ -84,23 +88,30 @@ class CrashAnalyzerGenerator {
    */
   showHelp() {
     console.log(`
-🔥 Firebase Crashlytics → Task Management Skill Installer (v2)
+🔥 Firebase Crashlytics → Jira Skill Installer
 
 Usage: crash-to-vibe [options]
 
-Options:
+Zero-config global mode (install once, use everywhere):
+  --zero-config       Install global skill to ~/.agents/skills/ — no baked-in config,
+                      reads crash-to-vibe.json from your project root at runtime
+  --init-project      Create crash-to-vibe.json in current directory (Jira config)
+
+Per-project mode (bakes config into skill):
   --use-last-config   Skip prompts, reuse last saved configuration
   --config <file>     Load predefined config file (for team sharing)
-  --global            Install to ~/.agents/skills/ (all projects)
+  --global            Install to ~/.agents/skills/ instead of ./.agents/skills/
   --force             Overwrite existing skill installation
   --dry-run           Preview files to be written without writing
   --also-claude       Also install to .claude/skills/
   --also-gemini       Also install to .gemini/skills/
+
   --help, -h          Show this help
 
 Examples:
-  crash-to-vibe                           # Interactive setup, install locally
-  crash-to-vibe --global                  # Install to ~/.agents/skills/
+  crash-to-vibe --zero-config             # Install global zero-config skill (once)
+  crash-to-vibe --init-project            # Create crash-to-vibe.json in project root
+  crash-to-vibe                           # Interactive per-project setup
   crash-to-vibe --use-last-config         # Reinstall with saved config
   crash-to-vibe --config team.json        # Use team's shared config
   crash-to-vibe --dry-run                 # Preview what would be installed
@@ -109,8 +120,6 @@ Examples:
 
 After installation your AI agent auto-activates when you mention crashes or
 Firebase Crashlytics. Supports Claude Code, Gemini CLI, Codex, GitHub Copilot.
-
-Skill install path (default): .agents/skills/crash-to-vibe/
 `);
   }
 
@@ -789,8 +798,7 @@ Skill install path (default): .agents/skills/crash-to-vibe/
     return dirs;
   }
 
-  printSuccessMessage(targetDirs, writtenPaths, dryRun) {
-    const prefix = dryRun ? '[dry-run] Would write' : 'Installed';
+  printSuccessMessage(targetDirs, writtenPaths, dryRun, zeroConfig = false) {
     console.log(`\n✅ Skill ${dryRun ? 'preview' : 'installed'}!\n`);
 
     for (const p of writtenPaths) {
@@ -799,10 +807,17 @@ Skill install path (default): .agents/skills/crash-to-vibe/
     }
 
     if (!dryRun) {
-      const primaryDir = path.relative(process.cwd(), path.join(targetDirs[0], 'crash-to-vibe'));
-      console.log(`\nYour AI agent will auto-activate when you mention crashes or Crashlytics.`);
-      console.log(`Try: "analyze my Firebase crashes for ${this.config.project.name || 'my app'}"`);
-      console.log(`\nNext run: crash-to-vibe --use-last-config`);
+      if (zeroConfig) {
+        console.log(`\nGlobal zero-config skill installed.`);
+        console.log(`\nNext steps:`);
+        console.log(`  1. In each mobile project, run: crash-to-vibe --init-project`);
+        console.log(`  2. Open Claude Code (or Gemini CLI / Copilot) in your project and say:`);
+        console.log(`       "analyze my Firebase crashes and create Jira issues"`);
+      } else {
+        console.log(`\nYour AI agent will auto-activate when you mention crashes or Crashlytics.`);
+        console.log(`Try: "analyze my Firebase crashes for ${this.config.project.name || 'my app'}"`);
+        console.log(`\nNext run: crash-to-vibe --use-last-config`);
+      }
     } else {
       console.log(`\nNo files written (dry run).`);
     }
@@ -829,6 +844,75 @@ Skill install path (default): .agents/skills/crash-to-vibe/
     return apps;
   }
 
+
+  /**
+   * Generate skill files for zero-config global skill.
+   * Static copy — no placeholder resolution needed.
+   */
+  generateZeroConfigSkillFiles() {
+    const files = new Map();
+    const tmplDir = path.join(__dirname, 'templates', 'skill-zero-config');
+
+    const readStatic = (relPath) => {
+      const filePath = path.join(tmplDir, relPath);
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`Zero-config template not found: ${filePath}`);
+      }
+      return fs.readFileSync(filePath, 'utf8');
+    };
+
+    files.set('SKILL.md',                        readStatic('SKILL.md'));
+    files.set('references/task-templates.md',    readStatic('references/task-templates.md'));
+    files.set('references/platform-patterns.md', readStatic('references/platform-patterns.md'));
+    files.set('references/pr-workflow.md',       readStatic('references/pr-workflow.md'));
+
+    return files;
+  }
+
+  /**
+   * Interactively create crash-to-vibe.json in cwd.
+   */
+  async initProject() {
+    console.log('\n🔧 Creating crash-to-vibe.json for this project\n');
+    console.log('This file stores your Jira config so the global skill can use it at runtime.');
+    console.log('Commit it to your repo so teammates get the same config.\n');
+
+    const outputPath = path.join(process.cwd(), 'crash-to-vibe.json');
+
+    if (fs.existsSync(outputPath) && !this.cliArgs.force) {
+      const overwrite = await this.promptUser(
+        `crash-to-vibe.json already exists. Overwrite? (y/N)`, 'N'
+      );
+      if (overwrite.toLowerCase() !== 'y') {
+        console.log('Aborted. Use --force to skip this prompt.');
+        return;
+      }
+    }
+
+    const cloudId = await this.promptUser('Atlassian Cloud ID (e.g. company.atlassian.net)', '');
+    const projectKey = await this.promptUser('Jira project key (e.g. PROJ)', '');
+    const issueType = await this.promptUser('Default issue type (Bug/Task/Story)', 'Bug');
+    const labels = await this.promptUser('Jira labels (comma-separated)', 'crash-to-vibe');
+
+    const addBitbucket = await this.promptUser('Add Bitbucket config for PR automation? (y/N)', 'N');
+    let bitbucket = undefined;
+    if (addBitbucket.toLowerCase() === 'y') {
+      const workspace = await this.promptUser('Bitbucket workspace', '');
+      const repoSlug = await this.promptUser('Repository slug', '');
+      const targetBranch = await this.promptUser('Target branch', 'develop');
+      bitbucket = { workspace, repoSlug, targetBranch, reviewers: [] };
+    }
+
+    const projectConfig = {
+      jira: { cloudId, projectKey, issueType, labels },
+      ...(bitbucket ? { bitbucket } : {}),
+    };
+
+    fs.writeFileSync(outputPath, JSON.stringify(projectConfig, null, 2) + '\n');
+    console.log(`\n✅ Created: ${outputPath}`);
+    console.log('\nCommit this file to your repo. Your team will use it automatically.');
+    console.log('The global skill reads it when you say "analyze my crashes".');
+  }
 
   saveConfig() {
     // Save config to script directory for global installs, or current directory for local
@@ -934,7 +1018,32 @@ Skill install path (default): .agents/skills/crash-to-vibe/
         process.exit(0);
       }
 
-      // Load config: predefined file → last saved → interactive
+      // --init-project: create crash-to-vibe.json in cwd
+      if (this.cliArgs.initProject) {
+        await this.initProject();
+        process.exit(0);
+      }
+
+      // --zero-config: install static global skill, no per-project config needed
+      if (this.cliArgs.zeroConfig) {
+        console.log('⚙️  Installing zero-config global skill...');
+        const skillFiles = this.generateZeroConfigSkillFiles();
+        // Default to global install for zero-config; --global flag not required
+        const base = os.homedir();
+        const dirs = [path.join(base, '.agents', 'skills')];
+        if (this.cliArgs.alsoClaude) dirs.push(path.join(base, '.claude', 'skills'));
+        if (this.cliArgs.alsoGemini) dirs.push(path.join(base, '.gemini', 'skills'));
+
+        const written = this.installSkill(skillFiles, dirs, {
+          force: this.cliArgs.force,
+          dryRun: this.cliArgs.dryRun,
+        });
+
+        this.printSuccessMessage(dirs, written, this.cliArgs.dryRun, true);
+        process.exit(0);
+      }
+
+      // Per-project mode: load config → generate → install
       if (this.cliArgs.configFile) {
         console.log('📦 Loading predefined configuration...\n');
         this.loadPredefinedConfig(this.cliArgs.configFile);
@@ -945,25 +1054,20 @@ Skill install path (default): .agents/skills/crash-to-vibe/
         await this.collectConfiguration();
       }
 
-      // Generate skill files (pure, no I/O)
       console.log('\n⚙️  Generating crash-to-vibe skill...');
       const skillFiles = this.generateSkillFiles(this.config);
-
-      // Determine install targets
       const targetDirs = this.buildTargetDirs(this.cliArgs);
 
-      // Install (or dry-run)
       const written = this.installSkill(skillFiles, targetDirs, {
         force: this.cliArgs.force,
         dryRun: this.cliArgs.dryRun,
       });
 
-      // Persist config for --use-last-config
       if (!this.cliArgs.dryRun) {
         this.saveConfig();
       }
 
-      this.printSuccessMessage(targetDirs, written, this.cliArgs.dryRun);
+      this.printSuccessMessage(targetDirs, written, this.cliArgs.dryRun, false);
       process.exit(0);
 
     } catch (error) {
