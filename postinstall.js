@@ -6,9 +6,16 @@ if (process.env.CI || process.env.CONTINUOUS_INTEGRATION) {
   process.exit(0);
 }
 
+const { version } = require('./package.json');
+const _title = `crash-to-vibe v${version} installed!`;
+const _inner = 58;
+const _lpad = Math.floor((_inner - _title.length) / 2);
+const _rpad = _inner - _title.length - _lpad;
+const _banner = `║${' '.repeat(_lpad)}${_title}${' '.repeat(_rpad)}║`;
+
 const msg = `
 ╔══════════════════════════════════════════════════════════╗
-║           crash-to-vibe installed!                       ║
+${_banner}
 ╚══════════════════════════════════════════════════════════╝
 
 Get started in your mobile project:

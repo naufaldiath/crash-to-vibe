@@ -50,6 +50,7 @@ class CrashAnalyzerGenerator {
       configFile: null,
       initProject: false,
       help: false,
+      version: false,
     };
 
     for (let i = 0; i < args.length; i++) {
@@ -59,7 +60,8 @@ class CrashAnalyzerGenerator {
         case '--dry-run':         parsed.dryRun = true; break;
         case '--use-last-config': parsed.useLastConfig = true; break;
         case '--init-project':    parsed.initProject = true; break;
-        case '--help': case '-h': parsed.help = true; break;
+        case '--help': case '-h':       parsed.help = true; break;
+        case '--version': case '-v':    parsed.version = true; break;
         case '--config':
           if (args[i + 1]) { parsed.configFile = args[++i]; }
           break;
@@ -103,6 +105,7 @@ Options:
   --config <file>     (with --configure) load predefined team config file
   --force             Overwrite existing skill installations
   --dry-run           Preview files to be written without writing
+  --version, -v       Show installed version
   --help, -h          Show this help
 
 Examples:
@@ -1027,6 +1030,12 @@ Installs skill to: ~/.claude/skills/, ~/.gemini/skills/, ~/.codex/skills/,
 
   async run() {
     try {
+      if (this.cliArgs.version) {
+        const { version } = require('./package.json');
+        console.log(`crash-to-vibe v${version}`);
+        process.exit(0);
+      }
+
       if (this.cliArgs.help) {
         this.showHelp();
         process.exit(0);
