@@ -154,6 +154,40 @@ Apply platform-specific focus areas from `references/platform-patterns.md`.
 
 ## STEP 6: Create Jira Issues
 
+### Phase 0: Dedup Check — run for EVERY issue before creating
+
+For each Firebase crash issue, search Jira first:
+
+```
+mcp_atlassian_searchJiraIssues
+- cloudId: [jira.cloudId from crash-to-vibe.json]
+- jql: 'project = "[jira.projectKey]" AND (labels = "firebase-[ISSUE_ID]" OR description ~ "[ISSUE_ID]") ORDER BY created DESC'
+- limit: 5
+```
+
+Evaluate results:
+
+**No results** → proceed to Phase 1 (create new ticket).
+
+**Open ticket found** (status ≠ Done / Closed / Resolved):
+- Skip creation. Tag as "🔄 Updated: [JIRA-KEY]".
+- Add refresh comment to existing ticket:
+  ```
+  mcp_atlassian_addCommentToJiraIssue
+  - cloudId: [jira.cloudId from crash-to-vibe.json]
+  - issueKey: [existing JIRA-KEY]
+  - body: "🔄 **Crash still active** (crash-to-vibe refresh [TODAY'S DATE])\n- Current: [X] crashes, [Y] users\n- Signals: [signals]\n- Firebase: [link]"
+  ```
+
+**Closed / Done / Resolved ticket found**:
+- Tag as "⚠️ Regression: [JIRA-KEY] — closed but crash still active".
+- Ask user: reopen [JIRA-KEY] or create a new ticket?
+- If creating new ticket: add "[REGRESSION]" to title and include link to closed ticket in description.
+
+### Phase 1: Create new tickets
+
+Only for issues with no existing Jira ticket.
+
 Load `references/task-templates.md` for CRITICAL, HIGH, and PERFORMANCE issue formats
 including stacktrace structure, acceptance criteria, and branch/commit conventions.
 
@@ -163,13 +197,13 @@ Use `mcp_atlassian_createJiraIssue` for each issue:
 - issueTypeName: [jira.issueType from crash-to-vibe.json]
 - summary: [from template]
 - description: [from template — include ACTUAL stacktrace, not placeholders]
-- additional_fields: priority + labels (jira.labels from crash-to-vibe.json)
+- additional_fields: priority + labels including `"firebase-[ISSUE_ID]"` (jira.labels from crash-to-vibe.json)
 
 ---
 
 ## STEP 7: Summary Report
 
-After all issues created, output:
+After processing all issues, output:
 
 ```
 ## Firebase → Jira Summary
@@ -178,7 +212,12 @@ Project: [Firebase project ID]
 App: [app_id] ([platform])
 Jira: [jira.cloudId] / [jira.projectKey]
 
-Issues Created: [X] total
+Issues Processed: [X] total
+  ✅ Created:   [X] — new Jira tickets
+  🔄 Updated:   [X] — existing open tickets (refresh comment added)
+  ⚠️ Regressed: [X] — closed tickets still crashing (needs attention)
+
+Severity Breakdown (new tickets only):
   🔥 Critical: [X] — fix this week
   🔥 High:     [X] — fix this sprint
   ⚡ Medium:   [X] — next sprint

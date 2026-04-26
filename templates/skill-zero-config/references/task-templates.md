@@ -88,7 +88,7 @@ mcp_atlassian_createJiraIssue:
 - description: [description above — Markdown format]
 - additional_fields: {
     "priority": { "name": "Highest" },
-    "labels": ["crash-to-vibe", "[JIRA_LABELS]", "crashlytics", "critical", "ai-ready"]
+    "labels": ["crash-to-vibe", "[JIRA_LABELS]", "crashlytics", "critical", "ai-ready", "firebase-[ISSUE_ID]"]
   }
 ```
 
@@ -174,7 +174,7 @@ mcp_atlassian_createJiraIssue:
 - description: [description above — Markdown format]
 - additional_fields: {
     "priority": { "name": "High" },
-    "labels": ["crash-to-vibe", "[JIRA_LABELS]", "crashlytics", "high-priority", "ai-ready"]
+    "labels": ["crash-to-vibe", "[JIRA_LABELS]", "crashlytics", "high-priority", "ai-ready", "firebase-[ISSUE_ID]"]
   }
 ```
 
@@ -260,7 +260,7 @@ mcp_atlassian_createJiraIssue:
 - description: [description above — Markdown format]
 - additional_fields: {
     "priority": { "name": "Medium" },
-    "labels": ["crash-to-vibe", "[JIRA_LABELS]", "crashlytics", "performance", "optimization", "ai-ready"]
+    "labels": ["crash-to-vibe", "[JIRA_LABELS]", "crashlytics", "performance", "optimization", "ai-ready", "firebase-[ISSUE_ID]"]
   }
 ```
 
